@@ -3,21 +3,44 @@ import Toast from './Toast'
 import { useForm } from 'react-hook-form'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getCompany, addCompany, updateCompany } from '../api/companies'
+import '../styles/CompanyForm.css'
 
 export default function CompanyForm() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
   const [toast, setToast] = useState(null)
+  
   const { 
     register, 
     handleSubmit, 
     setValue,
-    formState: { errors } 
+    reset,
+    watch 
   } = useForm({
-    mode: 'onChange'
+    defaultValues: {
+      name: '',
+      businessType: '',
+      industry: '',
+      website: '',
+      phoneNumber: '',
+      email: '',
+      responsiblePerson: '',
+      kenya: false,
+      uganda: false,
+      tanzania: false
+    }
   })
+
+  // Watch form values for changes
+  useEffect(() => {
+    const subscription = watch(() => {
+      setIsDirty(true)
+    })
+    return () => subscription.unsubscribe()
+  }, [watch])
 
   useEffect(() => {
     if (isEdit) {
@@ -27,8 +50,13 @@ export default function CompanyForm() {
           Object.entries(company).forEach(([key, value]) => {
             setValue(key, value)
           })
+          setIsDirty(false)
         } catch (error) {
           console.error('Error fetching company:', error)
+          setToast({
+            message: 'Failed to load company details',
+            type: 'error'
+          })
         }
       }
       fetchCompany()
@@ -36,8 +64,8 @@ export default function CompanyForm() {
   }, [id, isEdit, setValue])
 
   const onSubmit = async (data) => {
-    setIsSubmitting(true)
     try {
+      setIsSubmitting(true)
       if (isEdit) {
         await updateCompany(id, data)
         setToast({
@@ -51,6 +79,7 @@ export default function CompanyForm() {
           type: 'success'
         })
       }
+      setIsDirty(false)
       setTimeout(() => navigate('/'), 1500)
     } catch (error) {
       setToast({
@@ -63,132 +92,192 @@ export default function CompanyForm() {
     }
   }
 
+  const handleReset = () => {
+    if (window.confirm('Are you sure you want to reset the form? All changes will be lost.')) {
+      reset()
+      setIsDirty(false)
+    }
+  }
+
   return (
-    <div className="relative">
+    <div className="form-container">
       {toast && (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="toast-container">
           <Toast message={toast.message} type={toast.type} />
         </div>
       )}
-      <h1 className="text-2xl font-bold mb-6">
-        {isEdit ? 'Edit Company' : 'Add New Company'}
-      </h1>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Company Name</label>
-            <input
-              {...register('name', { 
-                required: 'Company name is required',
-                minLength: {
-                  value: 3,
-                  message: 'Name must be at least 3 characters'
-                }
-              })}
-              className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
-              placeholder="Enter company name"
-            />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Business Type</label>
-            <input
-              {...register('businessType')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="e.g., Manufacturing, Retail"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Industry</label>
-            <input
-              {...register('industry')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="e.g., Technology, Finance"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Website</label>
-            <input
-              {...register('website')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="https://www.example.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Responsible Person</label>
-            <input
-              {...register('responsiblePerson')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="Full name of contact person"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-            <input
-              {...register('phoneNumber')}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="+254 700 000 000"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
-            <input
-              {...register('email')}
-              type="email"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="contact@company.com"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">Presence</label>
-            <div className="mt-2 grid grid-cols-3 gap-4">
-              <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  {...register('kenya')}
-                  className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-3 text-sm font-medium text-gray-700">Kenya</span>
+
+      <div className="header-container">
+        <h1 className="page-title">
+          {isEdit ? 'Edit Company' : 'Add New Company'}
+        </h1>
+        <button
+          type="button"
+          onClick={() => {
+            if (!isDirty || window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+              navigate('/')
+            }
+          }}
+          className="back-button"
+        >
+          <svg className="back-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to List
+        </button>
+      </div>
+
+      <div className="form-card">
+        <form onSubmit={handleSubmit(onSubmit)} className="form-content">
+          <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">
+                Company Name
+                <span className="required-mark">*</span>
               </label>
-              <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  {...register('uganda')}
-                  className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-3 text-sm font-medium text-gray-700">Uganda</span>
+              <input
+                {...register('name')}
+                className="form-input"
+                placeholder="Enter company name"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Business Type</label>
+              <input
+                {...register('businessType')}
+                className="form-input"
+                placeholder="e.g., Manufacturing, Retail"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Industry</label>
+              <input
+                {...register('industry')}
+                className="form-input"
+                placeholder="e.g., Technology, Finance"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Website</label>
+              <input
+                {...register('website')}
+                className="form-input"
+                placeholder="https://www.example.com"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Phone Number</label>
+              <input
+                {...register('phoneNumber')}
+                className="form-input"
+                placeholder="+254 700 000 000"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input
+                {...register('email')}
+                type="email"
+                className="form-input"
+                placeholder="contact@company.com"
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                Responsible Person
+                <span className="required-mark">*</span>
               </label>
-              <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  {...register('tanzania')}
-                  className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="ml-3 text-sm font-medium text-gray-700">Tanzania</span>
+              <input
+                {...register('responsiblePerson')}
+                className="form-input"
+                placeholder="Full name of contact person"
+              />
+            </div>
+
+            <div className="presence-section">
+              <label className="presence-label">
+                Company Presence
+                <span className="required-mark">*</span>
+                <span className="helper-text">(Select at least one country)</span>
               </label>
+              <div className="presence-grid">
+                <label className="presence-option">
+                  <input
+                    type="checkbox"
+                    {...register('kenya')}
+                    className="presence-checkbox"
+                  />
+                  <span className="presence-text">Kenya</span>
+                </label>
+                <label className="presence-option">
+                  <input
+                    type="checkbox"
+                    {...register('uganda')}
+                    className="presence-checkbox"
+                  />
+                  <span className="presence-text">Uganda</span>
+                </label>
+                <label className="presence-option">
+                  <input
+                    type="checkbox"
+                    {...register('tanzania')}
+                    className="presence-checkbox"
+                  />
+                  <span className="presence-text">Tanzania</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="form-footer">
+              <div className="form-buttons">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="reset-button"
+                  disabled={isSubmitting || !isDirty}
+                >
+                  Reset Form
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isDirty || window.confirm('You have unsaved changes. Are you sure you want to cancel?')) {
+                      navigate('/')
+                    }
+                  }}
+                  className="cancel-button"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !isDirty}
+                  className="submit-button"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="loading-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {isEdit ? 'Updating...' : 'Saving...'}
+                    </>
+                  ) : (
+                    isEdit ? 'Update Company' : 'Save Company'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex justify-end space-x-3">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-          >
-            {isEdit ? 'Update' : 'Save'}
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   )
 }
