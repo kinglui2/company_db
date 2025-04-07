@@ -108,9 +108,6 @@ export default function CompanyForm() {
       )}
 
       <div className="header-container">
-        <h1 className="page-title">
-          {isEdit ? 'Edit Company' : 'Add New Company'}
-        </h1>
         <button
           type="button"
           onClick={() => {
@@ -245,33 +242,11 @@ export default function CompanyForm() {
                   Reset Form
                 </button>
                 <button
-                  type="button"
-                  onClick={() => {
-                    if (!isDirty || window.confirm('You have unsaved changes. Are you sure you want to cancel?')) {
-                      navigate('/')
-                    }
-                  }}
-                  className="cancel-button"
+                  type="submit"
+                  className="submit-button"
                   disabled={isSubmitting}
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !isDirty}
-                  className="submit-button"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="loading-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {isEdit ? 'Updating...' : 'Saving...'}
-                    </>
-                  ) : (
-                    isEdit ? 'Update Company' : 'Save Company'
-                  )}
+                  {isSubmitting ? 'Saving...' : isEdit ? 'Update Company' : 'Add Company'}
                 </button>
               </div>
             </div>
