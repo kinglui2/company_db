@@ -1,7 +1,8 @@
 import axios from 'axios'
 
+// Backend is on the same remote machine as frontend
 const apiClient = axios.create({
-  baseURL: 'http://102.164.54.1:5000/api', // remote machine ip
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -29,19 +30,18 @@ apiClient.interceptors.response.use(
       timestamp: new Date().toISOString()
     }
     console.error('API Error:', errorData)
-    
-    // Enhance error message for user display
+
     let userMessage = 'Network error occurred'
     if (error.response) {
       userMessage = error.response.data?.message || `Server error (${error.response.status})`
     } else if (error.request) {
       userMessage = 'No response from server'
     }
-    
-    return Promise.reject({ 
+
+    return Promise.reject({
       ...error,
       userMessage,
-      errorData 
+      errorData
     })
   }
 )
