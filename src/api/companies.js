@@ -1,9 +1,10 @@
 import axios from 'axios'
 
 // Use localhost during development on remote machine, ngrok URL for production
-const BASE_URL = import.meta.env.PROD
-  ? 'https://3a49-102-164-54-1.ngrok-free.app/api' // Production/Ngrok
-  : 'http://localhost:5000/api'                    // Local dev on remote machine
+const BASE_URL = import.meta.env.VITE_NGROK_URL
+  ? `${import.meta.env.VITE_NGROK_URL}/api`
+  : 'http://localhost:5000/api';
+               // Local dev on remote machine
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
