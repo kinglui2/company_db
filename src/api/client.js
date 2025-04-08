@@ -1,8 +1,12 @@
 import axios from 'axios'
 
-// Backend is on the same remote machine as frontend
+// Use ngrok URL in production, localhost in development
+const BASE_URL = import.meta.env.PROD
+  ? 'https://3a49-102-164-54-1.ngrok-free.app/api'
+  : 'http://localhost:5000/api'
+
 const apiClient = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
@@ -11,14 +15,14 @@ const apiClient = axios.create({
 
 // Add request interceptor
 apiClient.interceptors.request.use(config => {
-  console.log('Making request to:', config.url)
+  console.log(`➡️ Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`)
   return config
 })
 
 // Add response interceptor
 apiClient.interceptors.response.use(
   response => {
-    console.log('Received response from:', response.config.url)
+    console.log(`✅ Response from: ${response.config.url}`)
     return response
   },
   error => {
@@ -29,7 +33,7 @@ apiClient.interceptors.response.use(
       response: error.response?.data,
       timestamp: new Date().toISOString()
     }
-    console.error('API Error:', errorData)
+    console.error('❌ API Error:', errorData)
 
     let userMessage = 'Network error occurred'
     if (error.response) {

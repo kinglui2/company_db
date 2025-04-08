@@ -1,24 +1,28 @@
 import axios from 'axios'
 
-// Check if we're in production mode, and use the public IP of the remote server
+// Use the ngrok backend URL directly during development for cross-device/frontend-backend testing
+const BASE_URL = import.meta.env.PROD
+  ? 'https://3a49-102-164-54-1.ngrok-free.app/api' // Production/Ngrok
+  : 'http://localhost:5000/api'                    // Local dev
+
 const apiClient = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' 
-    ? 'http://102.164.54.1:5000/api'   // Remote server IP for production
-    : 'http://localhost:5000/api',       // Localhost for development
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
   }
 })
 
+// Log outgoing requests
 apiClient.interceptors.request.use(config => {
-  console.log('Making request to:', config.url)
+  console.log(`➡️ Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`)
   return config
 })
 
+// Handle responses and errors globally
 apiClient.interceptors.response.use(
   response => {
-    console.log('Received response from:', response.config.url)
+    console.log(`✅ Response from: ${response.config.url}`)
     return response
   },
   error => {
@@ -29,7 +33,7 @@ apiClient.interceptors.response.use(
       response: error.response?.data,
       timestamp: new Date().toISOString()
     }
-    console.error('API Error:', errorData)
+    console.error('❌ API Error:', errorData)
 
     let userMessage = 'Network error occurred'
     if (error.response) {
@@ -38,15 +42,11 @@ apiClient.interceptors.response.use(
       userMessage = 'No response from server'
     }
 
-    return Promise.reject({
-      ...error,
-      userMessage,
-      errorData
-    })
+    return Promise.reject({ ...error, userMessage, errorData })
   }
 )
 
-// Company API functions
+// ✅ Company API functions
 export const getCompanies = async () => {
   try {
     const response = await apiClient.get('/companies')
