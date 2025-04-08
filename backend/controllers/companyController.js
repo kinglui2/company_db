@@ -24,4 +24,29 @@ exports.addCompany = (req, res) => {
     });
 };
 
-
+// Delete a company from the database
+exports.deleteCompany = (req, res) => {
+    const { id } = req.params;
+    const sql = 'DELETE FROM companies WHERE id = ?';
+    
+    db.query(sql, [id], (err, result) => {
+    if (err) {
+      return res.status(500).json({ 
+        success: false,
+        error: 'Database operation failed',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Company not found' 
+      });
+    }
+    res.json({ 
+      success: true,
+      message: 'Company deleted successfully',
+      deletedId: id
+    });
+    });
+};

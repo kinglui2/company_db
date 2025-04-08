@@ -1,8 +1,10 @@
 .companies-container {
   position: relative;
-  max-width: 80rem;
-  margin: 0 auto;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
   padding: 1rem;
+  background-color: #1e1e1e;
+  color: #f5f5f5;
 }
 
 @media (min-width: 640px) {
@@ -70,34 +72,41 @@
 }
 
 .filter-card {
-  margin-bottom: 2rem;
-  background-color: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
-}
-
-.filter-content {
-  padding: 1.5rem;
+  margin-bottom: 0.5rem;
+  background-color: #2a2a2a;
+  border-radius: 0.5rem;
+  border: 1px solid #3a3a3a;
+  padding: 0.5rem;
 }
 
 .filter-title {
-  font-size: 1.125rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #111827;
-  margin-bottom: 1.5rem;
+  color: #ffd700;
+  margin-bottom: 0.5rem;
+  display: inline-block;
 }
 
 .filter-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
 }
 
-@media (min-width: 768px) {
-  .filter-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.filter-group {
+  min-width: 120px;
+  flex: 1;
+}
+
+.filter-label {
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.filter-select {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
 }
 
 .filter-group {
@@ -110,20 +119,23 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: #cccccc; /* Light grey */
 }
 
 .filter-select {
   width: 100%;
   padding: 0.625rem 1rem;
-  border: 1px solid #d1d5db;
+  background-color: #1e1e1e;
+  border: 1px solid #3a3a3a;
   border-radius: 0.5rem;
+  color: #f5f5f5;
   transition: all 150ms;
 }
 
 .filter-select:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #93c5fd;
+  border-color: #ffd700;
+  box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
 }
 
 .header-container {
@@ -182,13 +194,22 @@
 .table-container {
   background-color: white;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  border-radius: 0.75rem;
-  border: 1px solid #f3f4f6;
+  border-radius: 0;
+  border: none;
   overflow: hidden;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .table-scroll {
   overflow-x: auto;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.table-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .companies-table {
@@ -198,7 +219,7 @@
 }
 
 .table-header {
-  background-color: #f9fafb;
+  background-color: #2a2a2a;
 }
 
 .header-cell {
@@ -206,7 +227,7 @@
   text-align: left;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #6b7280;
+  color: #ffd700; /* Golden yellow */
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -216,12 +237,20 @@
   border-color: #e5e7eb;
 }
 
+/* Alternating row colors */
+.table-row:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+/* Hover effects */
 .table-row {
-  transition: background-color 150ms;
+  transition: all 150ms ease;
 }
 
 .table-row:hover {
-  background-color: #f9fafb;
+  background-color: #f0f4f8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .table-cell {
@@ -232,16 +261,16 @@
 .company-name {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #111827;
+  color: #000000;
 }
 
 .company-website {
   font-size: 0.875rem;
-  color: #2563eb;
+  color: #00bcd4; /* Cyan */
 }
 
 .company-website:hover {
-  color: #1d4ed8;
+  color: #ffd700; /* Golden yellow */
   text-decoration: underline;
 }
 
@@ -294,8 +323,9 @@
 
 .action-buttons {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
 }
 
 .edit-button {

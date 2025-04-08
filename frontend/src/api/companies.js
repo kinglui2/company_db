@@ -1,10 +1,6 @@
 import axios from 'axios'
 
-// Use localhost during development on remote machine, ngrok URL for production
-const BASE_URL = import.meta.env.VITE_NGROK_URL
-  ? `${import.meta.env.VITE_NGROK_URL}/api`
-  : 'http://localhost:5000/api';
-               // Local dev on remote machine
+const BASE_URL = 'http://localhost:5000/api';
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -27,23 +23,44 @@ apiClient.interceptors.response.use(
     return response
   },
   error => {
+    let userMessage = 'Operation failed';
+    let errorCode = 'UNKNOWN_ERROR';
+    
+    if (error.response) {
+      errorCode = error.response.status;
+      switch(error.response.status) {
+        case 400: 
+          userMessage = 'Invalid request data';
+          break;
+        case 401:
+          userMessage = 'Please login again';
+          break;
+        case 404:
+          userMessage = 'Resource not found';
+          break;
+        case 500:
+          userMessage = 'Server error - please try again later';
+          break;
+        default:
+          userMessage = error.response.data?.message || `Error occurred (${error.response.status})`;
+      }
+    } else if (error.request) {
+      errorCode = 'NETWORK_ERROR';
+      userMessage = 'No response from server - check your connection';
+    }
+
     const errorData = {
       url: error.config?.url,
       status: error.response?.status,
+      code: errorCode,
       message: error.message,
+      userMessage,
       response: error.response?.data,
       timestamp: new Date().toISOString()
     }
     console.error('❌ API Error:', errorData)
 
-    let userMessage = 'Network error occurred'
-    if (error.response) {
-      userMessage = error.response.data?.message || `Server error (${error.response.status})`
-    } else if (error.request) {
-      userMessage = 'No response from server'
-    }
-
-    return Promise.reject({ ...error, userMessage, errorData })
+    return Promise.reject({ ...error, ...errorData })
   }
 )
 

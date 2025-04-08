@@ -5,10 +5,9 @@ require('dotenv').config();
 
 const app = express();
 
-// ✅ CORS configuration to allow localhost and Ngrok frontend
+// CORS configuration for local development
 const allowedOrigins = [
-  'http://localhost:5173',  // Localhost frontend (for local development)
-  'https://3a49-102-164-54-1.ngrok-free.app',  // Ngrok frontend (for remote access)
+  'http://localhost:5173'  // Local frontend development server
 ];
 
 const corsOptions = {

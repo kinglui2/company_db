@@ -107,6 +107,34 @@ export default function CompaniesList() {
         </div>
       )}
 
+      <div className="header-container">
+        <div className="header-left">
+          <h1 className="page-title">Companies</h1>
+          <button 
+            onClick={async () => {
+              setLoading(true)
+              try {
+                const data = await getCompanies()
+                setCompanies(data)
+              } catch (error) {
+                console.error('Error refreshing data:', error)
+              } finally {
+                setLoading(false)
+              }
+            }}
+            className="refresh-button"
+            title="Refresh data"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M21.5 22A10 10 0 0 0 12 12a10 10 0 0 0-9.5 10M2.5 2a10 10 0 0 0 9.5 10 10 10 0 0 0 9.5-10"/>
+            </svg>
+          </button>
+        </div>
+        <Link to="/companies/new" className="add-button">
+          Add Company
+        </Link>
+      </div>
+
       <div className="filter-card">
         <div className="filter-content">
           <h3 className="filter-title">Filter Companies</h3>
@@ -240,7 +268,7 @@ export default function CompaniesList() {
                       <div className="company-name">{company.company_name}</div>
                       {company.website && (
                         <a 
-                          href={company.website} 
+                          href={company.website.startsWith('http') ? company.website : `https://${company.website}`}
                           target="_blank" 
                           rel="noopener noreferrer" 
                           className="company-website"

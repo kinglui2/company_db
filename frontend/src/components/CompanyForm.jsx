@@ -21,16 +21,16 @@ export default function CompanyForm() {
     watch 
   } = useForm({
     defaultValues: {
-      name: '',
-      businessType: '',
+      company_name: '',
+      business_type: '',
       industry: '',
       website: '',
-      phoneNumber: '',
-      email: '',
-      responsiblePerson: '',
-      kenya: false,
-      uganda: false,
-      tanzania: false
+      phone_number: '',
+      company_email: '',
+      responsible_person: '',
+      presence_in_kenya: false,
+      presence_in_uganda: false,
+      presence_in_tanzania: false
     }
   })
 
@@ -140,16 +140,22 @@ export default function CompanyForm() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Business Type</label>
+              <label className="form-label">
+                Business Type
+                <span className="required-mark">*</span>
+              </label>
               <input
-                {...register('businessType')}
+                {...register('business_type')}
                 className="form-input"
                 placeholder="e.g., Manufacturing, Retail"
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Industry</label>
+              <label className="form-label">
+                Industry
+                <span className="required-mark">*</span>
+              </label>
               <input
                 {...register('industry')}
                 className="form-input"
@@ -169,7 +175,7 @@ export default function CompanyForm() {
             <div className="form-group">
               <label className="form-label">Phone Number</label>
               <input
-                {...register('phoneNumber')}
+                {...register('phone_number')}
                 className="form-input"
                 placeholder="+254 700 000 000"
               />
@@ -178,7 +184,7 @@ export default function CompanyForm() {
             <div className="form-group">
               <label className="form-label">Email</label>
               <input
-                {...register('email')}
+                {...register('company_email')}
                 type="email"
                 className="form-input"
                 placeholder="contact@company.com"
@@ -186,12 +192,9 @@ export default function CompanyForm() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                Responsible Person
-                <span className="required-mark">*</span>
-              </label>
+              <label className="form-label">Responsible Person</label>
               <input
-                {...register('responsiblePerson')}
+                {...register('responsible_person')}
                 className="form-input"
                 placeholder="Full name of contact person"
               />
@@ -207,7 +210,7 @@ export default function CompanyForm() {
                 <label className="presence-option">
                   <input
                     type="checkbox"
-                    {...register('kenya')}
+                    {...register('presence_in_kenya')}
                     className="presence-checkbox"
                   />
                   <span className="presence-text">Kenya</span>
@@ -215,7 +218,7 @@ export default function CompanyForm() {
                 <label className="presence-option">
                   <input
                     type="checkbox"
-                    {...register('uganda')}
+                    {...register('presence_in_uganda')}
                     className="presence-checkbox"
                   />
                   <span className="presence-text">Uganda</span>
@@ -223,7 +226,7 @@ export default function CompanyForm() {
                 <label className="presence-option">
                   <input
                     type="checkbox"
-                    {...register('tanzania')}
+                    {...register('presence_in_tanzania')}
                     className="presence-checkbox"
                   />
                   <span className="presence-text">Tanzania</span>
