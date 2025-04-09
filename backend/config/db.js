@@ -5,7 +5,7 @@ const db = mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER,
-    password: '#KINGlui@22', // Temporary hardcoded for testing
+    password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     connectTimeout: 10000,
     multipleStatements: true // Added for SQL file imports
