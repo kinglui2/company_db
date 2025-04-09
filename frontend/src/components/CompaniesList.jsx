@@ -5,6 +5,7 @@ import Toast from './Toast'
 import '../styles/CompaniesList.css'
 
 export default function CompaniesList() {
+  const [activeCountry, setActiveCountry] = useState(null);
   const [companies, setCompanies] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
@@ -16,7 +17,7 @@ export default function CompaniesList() {
   const [filterOptions, setFilterOptions] = useState({
     businessTypes: [],
     industries: [],
-    countries: ['kenya', 'uganda', 'tanzania']
+    countries: ['kenya', 'uganda', 'tanzania', 'rwanda']
   })
 
   useEffect(() => {
@@ -290,22 +291,48 @@ export default function CompaniesList() {
                     <td className="table-cell">
                       <div className="contact-info">
                         <div className="contact-name">{company.responsible_person}</div>
-                        <div className="contact-details">{company.phone_number}</div>
-                        <div className="contact-details">{company.company_email}</div>
+                        <div className="contact-details">
+                          {company.responsible_phone && <div><strong>Responsible:</strong> {company.responsible_phone}</div>}
+                          {company.responsible_email && <div><strong>Responsible:</strong> {company.responsible_email}</div>}
+                        </div>
+                        <div className="contact-details">
+                          <div><strong>Company:</strong> {company.phone_number}</div>
+                          <div><strong>Company:</strong> {company.company_email}</div>
+                        </div>
                       </div>
                     </td>
                     <td className="table-cell">
-                      <div className="presence-badges">
-                        {company.presence_in_kenya && (
-                          <span className="badge badge-green">Kenya</span>
-                        )}
-                        {company.presence_in_uganda && (
-                          <span className="badge badge-blue">Uganda</span>
-                        )}
-                        {company.presence_in_tanzania && (
-                          <span className="badge badge-yellow">Tanzania</span>
-                        )}
-                      </div>
+                      {company.presence_in_kenya || company.presence_in_uganda || 
+                       company.presence_in_tanzania || company.presence_in_rwanda ? (
+                        <div className="presence-badges">
+                          {[
+                            {condition: company.presence_in_kenya, label: 'Kenya', style: 'badge-green'},
+                            {condition: company.presence_in_uganda, label: 'Uganda', style: 'badge-blue'},
+                            {condition: company.presence_in_tanzania, label: 'Tanzania', style: 'badge-yellow'},
+                            {condition: company.presence_in_rwanda, label: 'Rwanda', style: 'badge-purple'}
+                          ].map((country, index) => (
+                            country.condition && (
+                              <span 
+                                key={index} 
+                                className={`badge ${country.style} ${activeCountry === country.label.toLowerCase() ? 'active' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const newCountry = activeCountry === country.label.toLowerCase() ? 
+                                    null : 
+                                    country.label.toLowerCase();
+                                  console.log('Clicked:', country.label, 
+                                    'Current active:', activeCountry,
+                                    'Setting active:', newCountry);
+                                  setActiveCountry(newCountry);
+                                  console.log('Company data:', company);
+                                }}
+                              >
+                                {country.label}
+                              </span>
+                            )
+                          ))}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="table-cell">
                       <div className="action-buttons">

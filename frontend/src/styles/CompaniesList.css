@@ -304,6 +304,11 @@
   color: #92400e;
 }
 
+.badge-purple {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
 .contact-info {
   font-size: 0.875rem;
 }
@@ -382,4 +387,47 @@
   height: 1rem;
   background-color: #f3f4f6;
   border-radius: 0.25rem;
-} 
+}
+
+/* Make country badges clickable */
+.badge-green, 
+.badge-blue, 
+.badge-yellow, 
+.badge-purple {
+  cursor: pointer !important;
+  user-select: none;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0.25rem;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* Force pointer cursor on all badge states */
+.badge-green:hover,
+.badge-blue:hover, 
+.badge-yellow:hover,
+.badge-purple:hover,
+.badge-green.active,
+.badge-blue.active,
+.badge-yellow.active,
+.badge-purple.active {
+  cursor: pointer !important;
+}
+
+[class^="badge-"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+[class^="badge-"].active {
+  box-shadow: 0 0 0 2px #3b82f6;
+  transform: scale(1.05);
+}

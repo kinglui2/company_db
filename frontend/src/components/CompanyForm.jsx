@@ -30,7 +30,8 @@ export default function CompanyForm() {
       responsible_person: '',
       presence_in_kenya: false,
       presence_in_uganda: false,
-      presence_in_tanzania: false
+      presence_in_tanzania: false,
+      presence_in_rwanda: false
     }
   })
 
@@ -55,9 +56,12 @@ export default function CompanyForm() {
           setValue('phone_number', company.phone_number)
           setValue('company_email', company.company_email)
           setValue('responsible_person', company.responsible_person)
+          setValue('responsible_phone', company.responsible_phone)
+          setValue('responsible_email', company.responsible_email)
           setValue('presence_in_kenya', company.presence_in_kenya)
           setValue('presence_in_uganda', company.presence_in_uganda)
           setValue('presence_in_tanzania', company.presence_in_tanzania)
+          setValue('presence_in_rwanda', company.presence_in_rwanda)
           setIsDirty(false)
         } catch (error) {
           console.error('Error fetching company:', error)
@@ -208,6 +212,33 @@ export default function CompanyForm() {
               />
             </div>
 
+
+              {watch('selectedCountry') && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">
+                      {`${watch('selectedCountry').charAt(0).toUpperCase() + watch('selectedCountry').slice(1)} Contact Phone`}
+                    </label>
+                    <input
+                      {...register(`${watch('selectedCountry')}_contact_phone`)}
+                      className="form-input"
+                      placeholder={`e.g. ${watch('selectedCountry') === 'kenya' ? '+254' : watch('selectedCountry') === 'uganda' ? '+256' : watch('selectedCountry') === 'tanzania' ? '+255' : '+250'} 700 000 000`}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">
+                      {`${watch('selectedCountry').charAt(0).toUpperCase() + watch('selectedCountry').slice(1)} Contact Email`}
+                    </label>
+                    <input
+                      {...register(`${watch('selectedCountry')}_contact_email`)}
+                      type="email"
+                      className="form-input"
+                      placeholder={`${watch('selectedCountry')}.contact@company.com`}
+                    />
+                  </div>
+                </>
+              )}
+
             <div className="presence-section">
               <label className="presence-label">
                 Company Presence
@@ -239,10 +270,34 @@ export default function CompanyForm() {
                   />
                   <span className="presence-text">Tanzania</span>
                 </label>
+                <label className="presence-option">
+                  <input
+                    type="checkbox"
+                    {...register('presence_in_rwanda')}
+                    className="presence-checkbox"
+                  />
+                  <span className="presence-text">Rwanda</span>
+                </label>
               </div>
             </div>
 
             <div className="form-footer">
+              <div className="country-selection">
+                <label className="form-label">
+                  Country Details For:
+                  <span className="required-mark">*</span>
+                </label>
+                <select
+                  className="form-input"
+                  {...register('selectedCountry', { required: true })}
+                >
+                  <option value="">Select Country</option>
+                  <option value="kenya">Kenya</option>
+                  <option value="uganda">Uganda</option>
+                  <option value="tanzania">Tanzania</option>
+                  <option value="rwanda">Rwanda</option>
+                </select>
+              </div>
               <div className="form-buttons">
                 <button
                   type="button"
