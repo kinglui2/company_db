@@ -386,3 +386,46 @@
     font-size: 0.7rem;
   }
 }
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.filters-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.export-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.export-button:hover {
+  background-color: #38a169;
+}
+
+.export-button:disabled {
+  background-color: #cbd5e0;
+  cursor: not-allowed;
+}
+
+.export-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}

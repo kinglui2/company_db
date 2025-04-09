@@ -145,6 +145,102 @@ const CompaniesList = forwardRef((props, ref) => {
     });
   };
 
+  const handleExport = () => {
+    // Create a more detailed CSV with proper formatting for Excel
+    const headers = [
+      'Company Name',
+      'Business Type',
+      'Industry',
+      'Website',
+      'Presence',
+      'Kenya Contact',
+      'Kenya Phone',
+      'Kenya Email',
+      'Uganda Contact',
+      'Uganda Phone',
+      'Uganda Email',
+      'Tanzania Contact',
+      'Tanzania Phone',
+      'Tanzania Email',
+      'Rwanda Contact',
+      'Rwanda Phone',
+      'Rwanda Email'
+    ];
+    
+    // Format the data with proper escaping and organization
+    const csvData = filteredCompanies.map(company => {
+      // Get presence information
+      const presence = [
+        company.presence_in_kenya ? 'Kenya' : '',
+        company.presence_in_uganda ? 'Uganda' : '',
+        company.presence_in_tanzania ? 'Tanzania' : '',
+        company.presence_in_rwanda ? 'Rwanda' : ''
+      ].filter(Boolean).join(', ');
+      
+      // Get contact information for each country
+      const getCountryContacts = (country) => {
+        if (!company.countryContacts || !company.countryContacts[country]) {
+          return ['', '', ''];
+        }
+        
+        const contact = company.countryContacts[country];
+        return [
+          contact.responsible_person || '',
+          contact.responsible_phone || '',
+          contact.responsible_email || ''
+        ];
+      };
+      
+      const kenyaContacts = getCountryContacts('kenya');
+      const ugandaContacts = getCountryContacts('uganda');
+      const tanzaniaContacts = getCountryContacts('tanzania');
+      const rwandaContacts = getCountryContacts('rwanda');
+      
+      // Return formatted row
+      return [
+        company.company_name,
+        company.business_type,
+        company.industry,
+        company.website || '',
+        presence,
+        ...kenyaContacts,
+        ...ugandaContacts,
+        ...tanzaniaContacts,
+        ...rwandaContacts
+      ];
+    });
+    
+    // Create CSV content with proper escaping
+    const escapeCSV = (text) => {
+      if (text === null || text === undefined) return '""';
+      const string = String(text);
+      if (string.includes(',') || string.includes('"') || string.includes('\n')) {
+        return `"${string.replace(/"/g, '""')}"`;
+      }
+      return string;
+    };
+    
+    const csvContent = [
+      headers.map(escapeCSV).join(','),
+      ...csvData.map(row => row.map(escapeCSV).join(','))
+    ].join('\n');
+    
+    // Add BOM for Excel to recognize UTF-8
+    const BOM = '\uFEFF';
+    const csvContentWithBOM = BOM + csvContent;
+    
+    // Create and trigger download
+    const blob = new Blob([csvContentWithBOM], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `companies_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="companies-container">
       {toast && (
@@ -153,82 +249,97 @@ const CompaniesList = forwardRef((props, ref) => {
         </div>
       )}
 
-      <div className="filter-card">
-        <div className="filter-content">
-          <h3 className="filter-title">Filter Companies</h3>
-          <div className="filter-grid">
-            <div className="filter-group">
-              <label className="filter-label">Business Type</label>
-              <select
-                className="filter-select"
-                value={filters.businessType}
-                onChange={(e) => {
-                  setFilters({...filters, businessType: e.target.value})
-                  if (e.target.value !== 'custom') {
-                    setCustomFilters({...customFilters, businessType: ''})
-                  }
-                }}
-              >
-                <option value="">All Types</option>
-                {filterOptions.businessTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-                <option value="custom">Custom Type...</option>
-              </select>
-              {filters.businessType === 'custom' && (
-                <input
-                  type="text"
-                  className="filter-input"
-                  placeholder="Enter business type..."
-                  value={customFilters.businessType}
-                  onChange={(e) => setCustomFilters({...customFilters, businessType: e.target.value})}
-                />
-              )}
-            </div>
+      <div className="filters-card">
+        <div className="filters-header">
+          <h2 className="filters-title">Filters</h2>
+          <button 
+            onClick={handleExport}
+            className="export-button"
+            disabled={filteredCompanies.length === 0}
+          >
+            <svg className="export-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export CSV
+          </button>
+        </div>
+        <div className="filter-card">
+          <div className="filter-content">
+            <h3 className="filter-title">Filter Companies</h3>
+            <div className="filter-grid">
+              <div className="filter-group">
+                <label className="filter-label">Business Type</label>
+                <select
+                  className="filter-select"
+                  value={filters.businessType}
+                  onChange={(e) => {
+                    setFilters({...filters, businessType: e.target.value})
+                    if (e.target.value !== 'custom') {
+                      setCustomFilters({...customFilters, businessType: ''})
+                    }
+                  }}
+                >
+                  <option value="">All Types</option>
+                  {filterOptions.businessTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                  <option value="custom">Custom Type...</option>
+                </select>
+                {filters.businessType === 'custom' && (
+                  <input
+                    type="text"
+                    className="filter-input"
+                    placeholder="Enter business type..."
+                    value={customFilters.businessType}
+                    onChange={(e) => setCustomFilters({...customFilters, businessType: e.target.value})}
+                  />
+                )}
+              </div>
 
-            <div className="filter-group">
-              <label className="filter-label">Industry</label>
-              <select
-                className="filter-select"
-                value={filters.industry}
-                onChange={(e) => {
-                  setFilters({...filters, industry: e.target.value})
-                  if (e.target.value !== 'custom') {
-                    setCustomFilters({...customFilters, industry: ''})
-                  }
-                }}
-              >
-                <option value="">All Industries</option>
-                {filterOptions.industries.map(industry => (
-                  <option key={industry} value={industry}>{industry}</option>
-                ))}
-                <option value="custom">Custom Industry...</option>
-              </select>
-              {filters.industry === 'custom' && (
-                <input
-                  type="text"
-                  className="filter-input"
-                  placeholder="Enter industry..."
-                  value={customFilters.industry}
-                  onChange={(e) => setCustomFilters({...customFilters, industry: e.target.value})}
-                />
-              )}
-            </div>
+              <div className="filter-group">
+                <label className="filter-label">Industry</label>
+                <select
+                  className="filter-select"
+                  value={filters.industry}
+                  onChange={(e) => {
+                    setFilters({...filters, industry: e.target.value})
+                    if (e.target.value !== 'custom') {
+                      setCustomFilters({...customFilters, industry: ''})
+                    }
+                  }}
+                >
+                  <option value="">All Industries</option>
+                  {filterOptions.industries.map(industry => (
+                    <option key={industry} value={industry}>{industry}</option>
+                  ))}
+                  <option value="custom">Custom Industry...</option>
+                </select>
+                {filters.industry === 'custom' && (
+                  <input
+                    type="text"
+                    className="filter-input"
+                    placeholder="Enter industry..."
+                    value={customFilters.industry}
+                    onChange={(e) => setCustomFilters({...customFilters, industry: e.target.value})}
+                  />
+                )}
+              </div>
 
-            <div className="filter-group">
-              <label className="filter-label">Country Presence</label>
-              <select
-                className="filter-select"
-                value={filters.country}
-                onChange={(e) => setFilters({...filters, country: e.target.value})}
-              >
-                <option value="">All Countries</option>
-                {filterOptions.countries.map(country => (
-                  <option key={country} value={country}>
-                    {country.charAt(0).toUpperCase() + country.slice(1)}
-                  </option>
-                ))}
-              </select>
+              <div className="filter-group">
+                <label className="filter-label">Country Presence</label>
+                <select
+                  className="filter-select"
+                  value={filters.country}
+                  onChange={(e) => setFilters({...filters, country: e.target.value})}
+                >
+                  <option value="">All Countries</option>
+                  {filterOptions.countries.map(country => (
+                    <option key={country} value={country}>
+                      {country.charAt(0).toUpperCase() + country.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>
