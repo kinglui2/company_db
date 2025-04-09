@@ -1,5 +1,28 @@
 const db = require('../config/db');
 
+// Get a single company by ID
+exports.getCompany = (req, res) => {
+    const { id } = req.params;
+    const sql = 'SELECT * FROM companies WHERE id = ?';
+    
+    db.query(sql, [id], (err, result) => {
+        if (err) {
+            return res.status(500).json({ 
+                success: false,
+                error: 'Database operation failed',
+                details: process.env.NODE_ENV === 'development' ? err.message : undefined
+            });
+        }
+        if (result.length === 0) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Company not found' 
+            });
+        }
+        res.json(result[0]);
+    });
+};
+
 // Get all companies from the database
 exports.getAllCompanies = (req, res) => {
     db.query('SELECT * FROM companies', (err, results) => {

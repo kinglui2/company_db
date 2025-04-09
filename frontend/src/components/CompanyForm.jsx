@@ -21,7 +21,7 @@ export default function CompanyForm() {
     watch 
   } = useForm({
     defaultValues: {
-      company_name: '',
+      name: '',
       business_type: '',
       industry: '',
       website: '',
@@ -47,9 +47,17 @@ export default function CompanyForm() {
       const fetchCompany = async () => {
         try {
           const company = await getCompany(id)
-          Object.entries(company).forEach(([key, value]) => {
-            setValue(key, value)
-          })
+          // Explicitly set each field to ensure proper mapping
+          setValue('company_name', company.company_name)
+          setValue('business_type', company.business_type)
+          setValue('industry', company.industry)
+          setValue('website', company.website)
+          setValue('phone_number', company.phone_number)
+          setValue('company_email', company.company_email)
+          setValue('responsible_person', company.responsible_person)
+          setValue('presence_in_kenya', company.presence_in_kenya)
+          setValue('presence_in_uganda', company.presence_in_uganda)
+          setValue('presence_in_tanzania', company.presence_in_tanzania)
           setIsDirty(false)
         } catch (error) {
           console.error('Error fetching company:', error)
@@ -133,7 +141,7 @@ export default function CompanyForm() {
                 <span className="required-mark">*</span>
               </label>
               <input
-                {...register('name')}
+                {...register('company_name')}
                 className="form-input"
                 placeholder="Enter company name"
               />
