@@ -1,11 +1,14 @@
 const db = require('../config/db');
 
-// Get a single company by ID
+// Get a single company by ID with its country contacts
 exports.getCompany = (req, res) => {
     const { id } = req.params;
-    const sql = 'SELECT * FROM companies WHERE id = ?';
     
-    db.query(sql, [id], (err, result) => {
+    // First get the company details
+    const companySql = 'SELECT * FROM companies WHERE id = ?';
+    const contactsSql = 'SELECT * FROM country_contacts WHERE company_id = ?';
+    
+    db.query(companySql, [id], (err, companyResult) => {
         if (err) {
             return res.status(500).json({ 
                 success: false,
@@ -13,190 +16,335 @@ exports.getCompany = (req, res) => {
                 details: process.env.NODE_ENV === 'development' ? err.message : undefined
             });
         }
-        if (result.length === 0) {
+        if (companyResult.length === 0) {
             return res.status(404).json({ 
                 success: false,
                 error: 'Company not found' 
             });
         }
-        res.json(result[0]);
+
+        // Then get the country contacts
+        db.query(contactsSql, [id], (err, contactsResult) => {
+            if (err) {
+                return res.status(500).json({ 
+                    success: false,
+                    error: 'Database operation failed',
+                    details: process.env.NODE_ENV === 'development' ? err.message : undefined
+                });
+            }
+
+            // Combine the results
+            const company = companyResult[0];
+            company.countryContacts = contactsResult.reduce((acc, contact) => {
+                acc[contact.country] = {
+                    responsible_person: contact.responsible_person,
+                    company_email: contact.company_email,
+                    company_phone: contact.company_phone,
+                    responsible_phone: contact.responsible_phone,
+                    responsible_email: contact.responsible_email
+                };
+                return acc;
+            }, {});
+
+            res.json(company);
+        });
     });
 };
 
-// Get all companies from the database
+// Get all companies with their country contacts
 exports.getAllCompanies = (req, res) => {
-    db.query('SELECT * FROM companies', (err, results) => {
+    const companiesSql = 'SELECT * FROM companies';
+    const contactsSql = 'SELECT * FROM country_contacts';
+    
+    db.query(companiesSql, (err, companies) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
-        res.json(results);
+
+        db.query(contactsSql, (err, contacts) => {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+
+            // Group contacts by company
+            const contactsByCompany = contacts.reduce((acc, contact) => {
+                if (!acc[contact.company_id]) {
+                    acc[contact.company_id] = {};
+                }
+                acc[contact.company_id][contact.country] = {
+                    responsible_person: contact.responsible_person,
+                    company_email: contact.company_email,
+                    company_phone: contact.company_phone,
+                    responsible_phone: contact.responsible_phone,
+                    responsible_email: contact.responsible_email
+                };
+                return acc;
+            }, {});
+
+            // Add contacts to each company
+            const companiesWithContacts = companies.map(company => ({
+                ...company,
+                countryContacts: contactsByCompany[company.id] || {}
+            }));
+
+            res.json(companiesWithContacts);
+        });
     });
 };
 
-// Add a new company to the database
+// Add a new company with its country contacts
 exports.addCompany = (req, res) => {
     const { 
-      company_name,
-      business_type,
-      industry,
-      website,
-      responsible_person,
-      phone_number,
-      company_email,
-      presence_in_kenya,
-      presence_in_uganda, 
-      presence_in_tanzania,
-      presence_in_rwanda,
-      // Country-specific contacts
-      kenya_contact_phone,
-      kenya_contact_email,
-      uganda_contact_phone,
-      uganda_contact_email,
-      tanzania_contact_phone,
-      tanzania_contact_email,
-      rwanda_contact_phone,
-      rwanda_contact_email
+        company_name,
+        business_type,
+        industry,
+        website,
+        presence_in_kenya,
+        presence_in_uganda, 
+        presence_in_tanzania,
+        presence_in_rwanda,
+        countryContacts
     } = req.body;
 
-    const sql = `INSERT INTO companies (
-      company_name, business_type, industry, website,
-      responsible_person, phone_number, company_email,
-      presence_in_kenya, presence_in_uganda, presence_in_tanzania, presence_in_rwanda,
-      kenya_contact_phone, kenya_contact_email,
-      uganda_contact_phone, uganda_contact_email,
-      tanzania_contact_phone, tanzania_contact_email,
-      rwanda_contact_phone, rwanda_contact_email
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-    db.query(sql, [
-      company_name, business_type, industry, website,
-      responsible_person, phone_number, company_email,
-      presence_in_kenya, presence_in_uganda, presence_in_tanzania, presence_in_rwanda,
-      kenya_contact_phone, kenya_contact_email,
-      uganda_contact_phone, uganda_contact_email,
-      tanzania_contact_phone, tanzania_contact_email,
-      rwanda_contact_phone, rwanda_contact_email
-    ], (err, result) => {
+    // Start a transaction
+    db.beginTransaction(err => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
-        res.json({ message: 'Company added successfully', id: result.insertId });
+
+        // First insert the company
+        const companySql = `INSERT INTO companies (
+            company_name, business_type, industry, website,
+            presence_in_kenya, presence_in_uganda, presence_in_tanzania, presence_in_rwanda
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+        db.query(companySql, [
+            company_name, business_type, industry, website,
+            presence_in_kenya, presence_in_uganda, presence_in_tanzania, presence_in_rwanda
+        ], (err, result) => {
+            if (err) {
+                return db.rollback(() => {
+                    res.status(500).json({ error: err.message });
+                });
+            }
+
+            const companyId = result.insertId;
+
+            // Then insert country contacts if any
+            if (countryContacts && Object.keys(countryContacts).length > 0) {
+                const contactsSql = `INSERT INTO country_contacts (
+                    company_id, country, responsible_person, company_email,
+                    company_phone, responsible_phone, responsible_email
+                ) VALUES ?`;
+
+                const contactsValues = Object.entries(countryContacts).map(([country, contact]) => [
+                    companyId,
+                    country,
+                    contact.responsible_person,
+                    contact.company_email,
+                    contact.company_phone,
+                    contact.responsible_phone,
+                    contact.responsible_email
+                ]);
+
+                db.query(contactsSql, [contactsValues], (err) => {
+                    if (err) {
+                        return db.rollback(() => {
+                            res.status(500).json({ error: err.message });
+                        });
+                    }
+
+                    db.commit(err => {
+                        if (err) {
+                            return db.rollback(() => {
+                                res.status(500).json({ error: err.message });
+                            });
+                        }
+                        res.json({ message: 'Company added successfully', id: companyId });
+                    });
+                });
+            } else {
+                db.commit(err => {
+                    if (err) {
+                        return db.rollback(() => {
+                            res.status(500).json({ error: err.message });
+                        });
+                    }
+                    res.json({ message: 'Company added successfully', id: companyId });
+                });
+            }
+        });
     });
 };
 
-// Delete a company from the database
+// Delete a company and its country contacts
 exports.deleteCompany = (req, res) => {
     const { id } = req.params;
-    const sql = 'DELETE FROM companies WHERE id = ?';
     
-    db.query(sql, [id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ 
-        success: false,
-        error: 'Database operation failed',
-        details: process.env.NODE_ENV === 'development' ? err.message : undefined
-      });
-    }
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ 
-        success: false,
-        error: 'Company not found' 
-      });
-    }
-    res.json({ 
-      success: true,
-      message: 'Company deleted successfully',
-      deletedId: id
-    });
+    // Start a transaction
+    db.beginTransaction(err => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+
+        // First delete the company (this will cascade delete contacts)
+        const sql = 'DELETE FROM companies WHERE id = ?';
+        
+        db.query(sql, [id], (err, result) => {
+            if (err) {
+                return db.rollback(() => {
+                    res.status(500).json({ 
+                        success: false,
+                        error: 'Database operation failed',
+                        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+                    });
+                });
+            }
+            if (result.affectedRows === 0) {
+                return db.rollback(() => {
+                    res.status(404).json({ 
+                        success: false,
+                        error: 'Company not found' 
+                    });
+                });
+            }
+
+            db.commit(err => {
+                if (err) {
+                    return db.rollback(() => {
+                        res.status(500).json({ error: err.message });
+                    });
+                }
+                res.json({ 
+                    success: true,
+                    message: 'Company deleted successfully',
+                    deletedId: id
+                });
+            });
+        });
     });
 };
 
-// Update a company in the database
+// Update a company and its country contacts
 exports.updateCompany = (req, res) => {
-  const { id } = req.params;
-  const { 
-    company_name, 
-    business_type, 
-    industry, 
-    website, 
-    responsible_person,
-    phone_number, 
-    company_email, 
-    presence_in_kenya, 
-    presence_in_uganda, 
-    presence_in_tanzania,
-    presence_in_rwanda,
-    kenya_contact_phone,
-    kenya_contact_email,
-    uganda_contact_phone,
-    uganda_contact_email,
-    tanzania_contact_phone,
-    tanzania_contact_email,
-    rwanda_contact_phone,
-    rwanda_contact_email
-  } = req.body;
+    const { id } = req.params;
+    const { 
+        company_name,
+        business_type,
+        industry,
+        website,
+        presence_in_kenya,
+        presence_in_uganda,
+        presence_in_tanzania,
+        presence_in_rwanda,
+        countryContacts
+    } = req.body;
 
-  const sql = `UPDATE companies SET 
-      company_name = ?,
-      business_type = ?,
-      industry = ?,
-      website = ?,
-      responsible_person = ?,
-      phone_number = ?,
-      company_email = ?,
-      presence_in_kenya = ?,
-      presence_in_uganda = ?,
-      presence_in_tanzania = ?,
-      presence_in_rwanda = ?,
-      kenya_contact_phone = ?,
-      kenya_contact_email = ?,
-      uganda_contact_phone = ?,
-      uganda_contact_email = ?,
-      tanzania_contact_phone = ?,
-      tanzania_contact_email = ?,
-      rwanda_contact_phone = ?,
-      rwanda_contact_email = ?
-      WHERE id = ?`;
+    // Start a transaction
+    db.beginTransaction(err => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
 
-  db.query(sql, [
-      company_name,
-      business_type,
-      industry,
-      website,
-      responsible_person,
-      phone_number,
-      company_email,
-      presence_in_kenya,
-      presence_in_uganda,
-      presence_in_tanzania,
-      presence_in_rwanda,
-      kenya_contact_phone,
-      kenya_contact_email,
-      uganda_contact_phone,
-      uganda_contact_email,
-      tanzania_contact_phone,
-      tanzania_contact_email,
-      rwanda_contact_phone,
-      rwanda_contact_email,
-      id
-  ], (err, result) => {
-      if (err) {
-          return res.status(500).json({ 
-              success: false,
-              error: 'Database operation failed',
-              details: process.env.NODE_ENV === 'development' ? err.message : undefined
-          });
-      }
-      if (result.affectedRows === 0) {
-          return res.status(404).json({ 
-              success: false,
-              error: 'Company not found' 
-          });
-      }
-      res.json({ 
-          success: true,
-          message: 'Company updated successfully',
-          updatedId: id
-      });
-  });
+        // First update the company
+        const companySql = `UPDATE companies SET 
+            company_name = ?,
+            business_type = ?,
+            industry = ?,
+            website = ?,
+            presence_in_kenya = ?,
+            presence_in_uganda = ?,
+            presence_in_tanzania = ?,
+            presence_in_rwanda = ?
+            WHERE id = ?`;
+
+        db.query(companySql, [
+            company_name,
+            business_type,
+            industry,
+            website,
+            presence_in_kenya,
+            presence_in_uganda,
+            presence_in_tanzania,
+            presence_in_rwanda,
+            id
+        ], (err, result) => {
+            if (err) {
+                return db.rollback(() => {
+                    res.status(500).json({ error: err.message });
+                });
+            }
+            if (result.affectedRows === 0) {
+                return db.rollback(() => {
+                    res.status(404).json({ 
+                        success: false,
+                        error: 'Company not found' 
+                    });
+                });
+            }
+
+            // Then update country contacts
+            if (countryContacts && Object.keys(countryContacts).length > 0) {
+                // First delete existing contacts for this company
+                const deleteSql = 'DELETE FROM country_contacts WHERE company_id = ?';
+                db.query(deleteSql, [id], (err) => {
+                    if (err) {
+                        return db.rollback(() => {
+                            res.status(500).json({ error: err.message });
+                        });
+                    }
+
+                    // Then insert new contacts
+                    const contactsSql = `INSERT INTO country_contacts (
+                        company_id, country, responsible_person, company_email,
+                        company_phone, responsible_phone, responsible_email
+                    ) VALUES ?`;
+
+                    const contactsValues = Object.entries(countryContacts).map(([country, contact]) => [
+                        id,
+                        country,
+                        contact.responsible_person,
+                        contact.company_email,
+                        contact.company_phone,
+                        contact.responsible_phone,
+                        contact.responsible_email
+                    ]);
+
+                    db.query(contactsSql, [contactsValues], (err) => {
+                        if (err) {
+                            return db.rollback(() => {
+                                res.status(500).json({ error: err.message });
+                            });
+                        }
+
+                        db.commit(err => {
+                            if (err) {
+                                return db.rollback(() => {
+                                    res.status(500).json({ error: err.message });
+                                });
+                            }
+                            res.json({ 
+                                success: true,
+                                message: 'Company updated successfully',
+                                updatedId: id
+                            });
+                        });
+                    });
+                });
+            } else {
+                db.commit(err => {
+                    if (err) {
+                        return db.rollback(() => {
+                            res.status(500).json({ error: err.message });
+                        });
+                    }
+                    res.json({ 
+                        success: true,
+                        message: 'Company updated successfully',
+                        updatedId: id
+                    });
+                });
+            }
+        });
+    });
 };

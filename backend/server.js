@@ -26,8 +26,14 @@ const corsOptions = {
 app.use(cors(corsOptions));  // Use the defined CORS settings
 app.use(express.json());  // Parse JSON request bodies
 
-// ✅ Connect to DB (Make sure you replace this with your actual DB connection code if needed)
-// db.connect(); // Uncomment and modify this if needed
+// Connect to DB
+db.connect(err => {
+  if (err) {
+    console.error('Database connection failed:', err);
+  } else {
+    console.log('Connected to MySQL database');
+  }
+});
 
 // ✅ Routes - Handles requests to '/api/companies' (already defined in your routes)
 const companyRoutes = require('./routes/companyRoutes');

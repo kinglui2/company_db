@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Link } from 'react-router-dom'
 import { getCompanies, deleteCompany } from '../api/companies'
 import Toast from './Toast'
 import '../styles/CompaniesList.css'
 
-export default function CompaniesList() {
-  const [activeCountry, setActiveCountry] = useState(null);
+const CompaniesList = forwardRef((props, ref) => {
+  const [activeCountries, setActiveCountries] = useState({});
   const [companies, setCompanies] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
@@ -19,6 +19,26 @@ export default function CompaniesList() {
     industries: [],
     countries: ['kenya', 'uganda', 'tanzania', 'rwanda']
   })
+  const [customFilters, setCustomFilters] = useState({
+    businessType: '',
+    industry: ''
+  })
+
+  const handleRefresh = async () => {
+    setLoading(true)
+    try {
+      const data = await getCompanies()
+      setCompanies(data)
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useImperativeHandle(ref, () => ({
+    handleRefresh
+  }))
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -88,17 +108,42 @@ export default function CompaniesList() {
   }
 
   const filteredCompanies = companies.filter(company => {
-    if (filters.businessType && company.business_type !== filters.businessType) {
-      return false
+    if (filters.businessType) {
+      if (filters.businessType === 'custom') {
+        if (!customFilters.businessType || !company.business_type.toLowerCase().includes(customFilters.businessType.toLowerCase())) {
+          return false
+        }
+      } else if (company.business_type !== filters.businessType) {
+        return false
+      }
     }
-    if (filters.industry && company.industry !== filters.industry) {
-      return false
+    if (filters.industry) {
+      if (filters.industry === 'custom') {
+        if (!customFilters.industry || !company.industry.toLowerCase().includes(customFilters.industry.toLowerCase())) {
+          return false
+        }
+      } else if (company.industry !== filters.industry) {
+        return false
+      }
     }
     if (filters.country && !company[`presence_in_${filters.country}`]) {
       return false
     }
     return true
   })
+
+  const handleCountryClick = (companyId, country) => {
+    setActiveCountries(prev => {
+      const newState = { ...prev };
+      const countryKey = country.label.toLowerCase();
+      if (newState[companyId] === countryKey) {
+        delete newState[companyId];
+      } else {
+        newState[companyId] = countryKey;
+      }
+      return newState;
+    });
+  };
 
   return (
     <div className="companies-container">
@@ -107,34 +152,6 @@ export default function CompaniesList() {
           <Toast message={toast.message} type={toast.type} />
         </div>
       )}
-
-      <div className="header-container">
-        <div className="header-left">
-          <h1 className="page-title">Companies</h1>
-          <button 
-            onClick={async () => {
-              setLoading(true)
-              try {
-                const data = await getCompanies()
-                setCompanies(data)
-              } catch (error) {
-                console.error('Error refreshing data:', error)
-              } finally {
-                setLoading(false)
-              }
-            }}
-            className="refresh-button"
-            title="Refresh data"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M21.5 22A10 10 0 0 0 12 12a10 10 0 0 0-9.5 10M2.5 2a10 10 0 0 0 9.5 10 10 10 0 0 0 9.5-10"/>
-            </svg>
-          </button>
-        </div>
-        <Link to="/companies/new" className="add-button">
-          Add Company
-        </Link>
-      </div>
 
       <div className="filter-card">
         <div className="filter-content">
@@ -145,13 +162,28 @@ export default function CompaniesList() {
               <select
                 className="filter-select"
                 value={filters.businessType}
-                onChange={(e) => setFilters({...filters, businessType: e.target.value})}
+                onChange={(e) => {
+                  setFilters({...filters, businessType: e.target.value})
+                  if (e.target.value !== 'custom') {
+                    setCustomFilters({...customFilters, businessType: ''})
+                  }
+                }}
               >
                 <option value="">All Types</option>
                 {filterOptions.businessTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
+                <option value="custom">Custom Type...</option>
               </select>
+              {filters.businessType === 'custom' && (
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="Enter business type..."
+                  value={customFilters.businessType}
+                  onChange={(e) => setCustomFilters({...customFilters, businessType: e.target.value})}
+                />
+              )}
             </div>
 
             <div className="filter-group">
@@ -159,13 +191,28 @@ export default function CompaniesList() {
               <select
                 className="filter-select"
                 value={filters.industry}
-                onChange={(e) => setFilters({...filters, industry: e.target.value})}
+                onChange={(e) => {
+                  setFilters({...filters, industry: e.target.value})
+                  if (e.target.value !== 'custom') {
+                    setCustomFilters({...customFilters, industry: ''})
+                  }
+                }}
               >
                 <option value="">All Industries</option>
                 {filterOptions.industries.map(industry => (
                   <option key={industry} value={industry}>{industry}</option>
                 ))}
+                <option value="custom">Custom Industry...</option>
               </select>
+              {filters.industry === 'custom' && (
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="Enter industry..."
+                  value={customFilters.industry}
+                  onChange={(e) => setCustomFilters({...customFilters, industry: e.target.value})}
+                />
+              )}
             </div>
 
             <div className="filter-group">
@@ -185,34 +232,6 @@ export default function CompaniesList() {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="header-container">
-        <div className="header-left">
-          <h1 className="page-title">Companies</h1>
-          <button 
-            onClick={async () => {
-              setLoading(true)
-              try {
-                const data = await getCompanies()
-                setCompanies(data)
-              } catch (error) {
-                console.error('Error refreshing data:', error)
-              } finally {
-                setLoading(false)
-              }
-            }}
-            className="refresh-button"
-            title="Refresh data"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M21.5 22A10 10 0 0 0 12 12a10 10 0 0 0-9.5 10M2.5 2a10 10 0 0 0 9.5 10 10 10 0 0 0 9.5-10"/>
-            </svg>
-          </button>
-        </div>
-        <Link to="/companies/new" className="add-button">
-          Add Company
-        </Link>
       </div>
 
       {loading ? (
@@ -290,49 +309,63 @@ export default function CompaniesList() {
                     </td>
                     <td className="table-cell">
                       <div className="contact-info">
-                        <div className="contact-name">{company.responsible_person}</div>
-                        <div className="contact-details">
-                          {company.responsible_phone && <div><strong>Responsible:</strong> {company.responsible_phone}</div>}
-                          {company.responsible_email && <div><strong>Responsible:</strong> {company.responsible_email}</div>}
-                        </div>
-                        <div className="contact-details">
-                          <div><strong>Company:</strong> {company.phone_number}</div>
-                          <div><strong>Company:</strong> {company.company_email}</div>
-                        </div>
+                        {activeCountries[company.id] && company.countryContacts && company.countryContacts[activeCountries[company.id]] ? (
+                          <>
+                            <div className="contact-name">
+                              {company.countryContacts[activeCountries[company.id]].responsible_person}
+                            </div>
+                            <div className="contact-details">
+                              {company.countryContacts[activeCountries[company.id]].responsible_phone && (
+                                <div><strong>Phone:</strong> {company.countryContacts[activeCountries[company.id]].responsible_phone}</div>
+                              )}
+                              {company.countryContacts[activeCountries[company.id]].responsible_email && (
+                                <div><strong>Email:</strong> {company.countryContacts[activeCountries[company.id]].responsible_email}</div>
+                              )}
+                            </div>
+                            <div className="contact-details">
+                              {company.countryContacts[activeCountries[company.id]].company_phone && (
+                                <div><strong>Company Phone:</strong> {company.countryContacts[activeCountries[company.id]].company_phone}</div>
+                              )}
+                              {company.countryContacts[activeCountries[company.id]].company_email && (
+                                <div><strong>Company Email:</strong> {company.countryContacts[activeCountries[company.id]].company_email}</div>
+                              )}
+                            </div>
+                            <div className="country-indicator">
+                              Showing contacts for {activeCountries[company.id].charAt(0).toUpperCase() + activeCountries[company.id].slice(1)}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="contact-name">Select a country to view contacts</div>
+                            <div className="contact-details">
+                              Click on a country badge above to view its specific contact information
+                            </div>
+                          </>
+                        )}
                       </div>
                     </td>
                     <td className="table-cell">
-                      {company.presence_in_kenya || company.presence_in_uganda || 
-                       company.presence_in_tanzania || company.presence_in_rwanda ? (
-                        <div className="presence-badges">
-                          {[
-                            {condition: company.presence_in_kenya, label: 'Kenya', style: 'badge-green'},
-                            {condition: company.presence_in_uganda, label: 'Uganda', style: 'badge-blue'},
-                            {condition: company.presence_in_tanzania, label: 'Tanzania', style: 'badge-yellow'},
-                            {condition: company.presence_in_rwanda, label: 'Rwanda', style: 'badge-purple'}
-                          ].map((country, index) => (
-                            country.condition && (
-                              <span 
-                                key={index} 
-                                className={`badge ${country.style} ${activeCountry === country.label.toLowerCase() ? 'active' : ''}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const newCountry = activeCountry === country.label.toLowerCase() ? 
-                                    null : 
-                                    country.label.toLowerCase();
-                                  console.log('Clicked:', country.label, 
-                                    'Current active:', activeCountry,
-                                    'Setting active:', newCountry);
-                                  setActiveCountry(newCountry);
-                                  console.log('Company data:', company);
-                                }}
-                              >
-                                {country.label}
-                              </span>
-                            )
-                          ))}
-                        </div>
-                      ) : null}
+                      <div className="presence-badges">
+                        {[
+                          {condition: company.presence_in_kenya, label: 'Kenya', style: 'badge-green'},
+                          {condition: company.presence_in_uganda, label: 'Uganda', style: 'badge-blue'},
+                          {condition: company.presence_in_tanzania, label: 'Tanzania', style: 'badge-yellow'},
+                          {condition: company.presence_in_rwanda, label: 'Rwanda', style: 'badge-purple'}
+                        ].map((country, index) => (
+                          country.condition && (
+                            <span 
+                              key={index} 
+                              className={`badge ${country.style} ${activeCountries[company.id] === country.label.toLowerCase() ? 'active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCountryClick(company.id, country);
+                              }}
+                            >
+                              {country.label}
+                            </span>
+                          )
+                        ))}
+                      </div>
                     </td>
                     <td className="table-cell">
                       <div className="action-buttons">
@@ -377,4 +410,6 @@ export default function CompaniesList() {
       )}
     </div>
   )
-}
+})
+
+export default CompaniesList

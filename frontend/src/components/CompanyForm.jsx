@@ -12,22 +12,58 @@ export default function CompanyForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [toast, setToast] = useState(null)
+  const [selectedCountry, setSelectedCountry] = useState(null)
   
+  const countryCode = {
+    kenya: '+254',
+    uganda: '+256',
+    tanzania: '+255',
+    rwanda: '+250'
+  }
+
   const { 
     register, 
     handleSubmit, 
     setValue,
     reset,
-    watch 
+    watch,
+    formState: { errors }
   } = useForm({
     defaultValues: {
       name: '',
       business_type: '',
       industry: '',
       website: '',
-      phone_number: '',
-      company_email: '',
-      responsible_person: '',
+      country_contacts: {
+        kenya: {
+          responsible_person: '',
+          responsible_phone: '',
+          responsible_email: '',
+          company_phone: '',
+          company_email: ''
+        },
+        uganda: {
+          responsible_person: '',
+          responsible_phone: '',
+          responsible_email: '',
+          company_phone: '',
+          company_email: ''
+        },
+        tanzania: {
+          responsible_person: '',
+          responsible_phone: '',
+          responsible_email: '',
+          company_phone: '',
+          company_email: ''
+        },
+        rwanda: {
+          responsible_person: '',
+          responsible_phone: '',
+          responsible_email: '',
+          company_phone: '',
+          company_email: ''
+        }
+      },
       presence_in_kenya: false,
       presence_in_uganda: false,
       presence_in_tanzania: false,
@@ -48,25 +84,30 @@ export default function CompanyForm() {
       const fetchCompany = async () => {
         try {
           const company = await getCompany(id)
-          // Explicitly set each field to ensure proper mapping
-          setValue('company_name', company.company_name)
+          // Set basic company info
+          setValue('name', company.name)
           setValue('business_type', company.business_type)
           setValue('industry', company.industry)
           setValue('website', company.website)
-          setValue('phone_number', company.phone_number)
-          setValue('company_email', company.company_email)
-          setValue('responsible_person', company.responsible_person)
-          setValue('responsible_phone', company.responsible_phone)
-          setValue('responsible_email', company.responsible_email)
+          
+          // Set presence flags
           setValue('presence_in_kenya', company.presence_in_kenya)
           setValue('presence_in_uganda', company.presence_in_uganda)
           setValue('presence_in_tanzania', company.presence_in_tanzania)
           setValue('presence_in_rwanda', company.presence_in_rwanda)
+          
+          // Set country contacts
+          if (company.country_contacts) {
+            Object.entries(company.country_contacts).forEach(([country, contacts]) => {
+              setValue(`country_contacts.${country}`, contacts)
+            })
+          }
+          
           setIsDirty(false)
         } catch (error) {
           console.error('Error fetching company:', error)
           setToast({
-            message: 'Failed to load company details',
+            message: error.userMessage || 'Failed to load company details',
             type: 'error'
           })
         }
@@ -78,14 +119,36 @@ export default function CompanyForm() {
   const onSubmit = async (data) => {
     try {
       setIsSubmitting(true)
+      
+      // Set presence flags based on selected country
+      const selectedCountry = data.country;
+      const presenceFlags = {
+        presence_in_kenya: selectedCountry === 'kenya',
+        presence_in_uganda: selectedCountry === 'uganda',
+        presence_in_tanzania: selectedCountry === 'tanzania',
+        presence_in_rwanda: selectedCountry === 'rwanda'
+      };
+      
+      // Prepare company data with correct field names
+      const companyData = {
+        company_name: data.name,
+        business_type: data.business_type,
+        industry: data.industry,
+        website: data.website,
+        ...presenceFlags,
+        countryContacts: {
+          [selectedCountry]: data.country_contacts[selectedCountry]
+        }
+      };
+
       if (isEdit) {
-        await updateCompany(id, data)
+        await updateCompany(id, companyData)
         setToast({
           message: 'Company updated successfully',
           type: 'success'
         })
       } else {
-        await addCompany(data)
+        await addCompany(companyData)
         setToast({
           message: 'Company added successfully', 
           type: 'success'
@@ -95,7 +158,7 @@ export default function CompanyForm() {
       setTimeout(() => navigate('/'), 1500)
     } catch (error) {
       setToast({
-        message: error.message || 'Failed to save company',
+        message: error.userMessage || 'Failed to save company',
         type: 'error'
       })
       console.error('Error saving company:', error)
@@ -107,6 +170,7 @@ export default function CompanyForm() {
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset the form? All changes will be lost.')) {
       reset()
+      setSelectedCountry(null)
       setIsDirty(false)
     }
   }
@@ -145,10 +209,21 @@ export default function CompanyForm() {
                 <span className="required-mark">*</span>
               </label>
               <input
-                {...register('company_name')}
-                className="form-input"
+                {...register('name', { 
+                  required: 'Company name is required',
+                  minLength: {
+                    value: 2,
+                    message: 'Company name must be at least 2 characters long'
+                  },
+                  maxLength: {
+                    value: 100,
+                    message: 'Company name cannot exceed 100 characters'
+                  }
+                })}
+                className={`form-input ${errors.name ? 'error' : ''}`}
                 placeholder="Enter company name"
               />
+              {errors.name && <span className="error-message">{errors.name.message}</span>}
             </div>
 
             <div className="form-group">
@@ -157,10 +232,17 @@ export default function CompanyForm() {
                 <span className="required-mark">*</span>
               </label>
               <input
-                {...register('business_type')}
-                className="form-input"
+                {...register('business_type', { 
+                  required: 'Business type is required',
+                  minLength: {
+                    value: 2,
+                    message: 'Business type must be at least 2 characters long'
+                  }
+                })}
+                className={`form-input ${errors.business_type ? 'error' : ''}`}
                 placeholder="e.g., Manufacturing, Retail"
               />
+              {errors.business_type && <span className="error-message">{errors.business_type.message}</span>}
             </div>
 
             <div className="form-group">
@@ -169,152 +251,192 @@ export default function CompanyForm() {
                 <span className="required-mark">*</span>
               </label>
               <input
-                {...register('industry')}
-                className="form-input"
+                {...register('industry', { 
+                  required: 'Industry is required',
+                  minLength: {
+                    value: 2,
+                    message: 'Industry must be at least 2 characters long'
+                  }
+                })}
+                className={`form-input ${errors.industry ? 'error' : ''}`}
                 placeholder="e.g., Technology, Finance"
               />
+              {errors.industry && <span className="error-message">{errors.industry.message}</span>}
             </div>
 
             <div className="form-group">
               <label className="form-label">Website</label>
               <input
-                {...register('website')}
-                className="form-input"
+                {...register('website', {
+                  pattern: {
+                    value: /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/,
+                    message: 'Please enter a valid website URL'
+                  }
+                })}
+                className={`form-input ${errors.website ? 'error' : ''}`}
                 placeholder="https://www.example.com"
               />
+              {errors.website && <span className="error-message">{errors.website.message}</span>}
             </div>
 
             <div className="form-group">
-              <label className="form-label">Phone Number</label>
-              <input
-                {...register('phone_number')}
-                className="form-input"
-                placeholder="+254 700 000 000"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Email</label>
-              <input
-                {...register('company_email')}
-                type="email"
-                className="form-input"
-                placeholder="contact@company.com"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Responsible Person</label>
-              <input
-                {...register('responsible_person')}
-                className="form-input"
-                placeholder="Full name of contact person"
-              />
-            </div>
-
-
-              {watch('selectedCountry') && (
-                <>
-                  <div className="form-group">
-                    <label className="form-label">
-                      {`${watch('selectedCountry').charAt(0).toUpperCase() + watch('selectedCountry').slice(1)} Contact Phone`}
-                    </label>
-                    <input
-                      {...register(`${watch('selectedCountry')}_contact_phone`)}
-                      className="form-input"
-                      placeholder={`e.g. ${watch('selectedCountry') === 'kenya' ? '+254' : watch('selectedCountry') === 'uganda' ? '+256' : watch('selectedCountry') === 'tanzania' ? '+255' : '+250'} 700 000 000`}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">
-                      {`${watch('selectedCountry').charAt(0).toUpperCase() + watch('selectedCountry').slice(1)} Contact Email`}
-                    </label>
-                    <input
-                      {...register(`${watch('selectedCountry')}_contact_email`)}
-                      type="email"
-                      className="form-input"
-                      placeholder={`${watch('selectedCountry')}.contact@company.com`}
-                    />
-                  </div>
-                </>
-              )}
-
-            <div className="presence-section">
-              <label className="presence-label">
-                Company Presence
+              <label className="form-label">
+                Country
                 <span className="required-mark">*</span>
-                <span className="helper-text">(Select at least one country)</span>
               </label>
-              <div className="presence-grid">
-                <label className="presence-option">
-                  <input
-                    type="checkbox"
-                    {...register('presence_in_kenya')}
-                    className="presence-checkbox"
-                  />
-                  <span className="presence-text">Kenya</span>
-                </label>
-                <label className="presence-option">
-                  <input
-                    type="checkbox"
-                    {...register('presence_in_uganda')}
-                    className="presence-checkbox"
-                  />
-                  <span className="presence-text">Uganda</span>
-                </label>
-                <label className="presence-option">
-                  <input
-                    type="checkbox"
-                    {...register('presence_in_tanzania')}
-                    className="presence-checkbox"
-                  />
-                  <span className="presence-text">Tanzania</span>
-                </label>
-                <label className="presence-option">
-                  <input
-                    type="checkbox"
-                    {...register('presence_in_rwanda')}
-                    className="presence-checkbox"
-                  />
-                  <span className="presence-text">Rwanda</span>
-                </label>
-              </div>
+              <select
+                {...register('country', { required: 'Country is required' })}
+                className={`form-input ${errors.country ? 'error' : ''}`}
+                onChange={(e) => {
+                  const country = e.target.value;
+                  setValue('country', country);
+                  setSelectedCountry(country);
+                }}
+              >
+                <option value="">Select a country</option>
+                <option value="kenya">Kenya</option>
+                <option value="uganda">Uganda</option>
+                <option value="tanzania">Tanzania</option>
+                <option value="rwanda">Rwanda</option>
+              </select>
+              {errors.country && <span className="error-message">{errors.country.message}</span>}
             </div>
 
-            <div className="form-footer">
-              <div className="country-selection">
+            {watch('country') && (
+              <div className="form-group">
                 <label className="form-label">
-                  Country Details For:
+                  Responsible Person
                   <span className="required-mark">*</span>
                 </label>
-                <select
-                  className="form-input"
-                  {...register('selectedCountry', { required: true })}
-                >
-                  <option value="">Select Country</option>
-                  <option value="kenya">Kenya</option>
-                  <option value="uganda">Uganda</option>
-                  <option value="tanzania">Tanzania</option>
-                  <option value="rwanda">Rwanda</option>
-                </select>
+                <input
+                  {...register(`country_contacts.${watch('country')}.responsible_person`, { 
+                    required: 'Responsible person is required',
+                    minLength: {
+                      value: 2,
+                      message: 'Name must be at least 2 characters long'
+                    }
+                  })}
+                  className={`form-input ${errors.country_contacts?.[watch('country')]?.responsible_person ? 'error' : ''}`}
+                  placeholder="Full name of contact person"
+                />
+                {errors.country_contacts?.[watch('country')]?.responsible_person && (
+                  <span className="error-message">{errors.country_contacts[watch('country')].responsible_person.message}</span>
+                )}
               </div>
-              <div className="form-buttons">
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="reset-button"
-                  disabled={isSubmitting || !isDirty}
-                >
-                  Reset Form
-                </button>
-                <button
-                  type="submit"
-                  className="submit-button"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Saving...' : isEdit ? 'Update Company' : 'Add Company'}
-                </button>
+            )}
+
+            {watch('country') && (
+              <div className="form-group">
+                <label className="form-label">
+                  Responsible Person Phone
+                  <span className="required-mark">*</span>
+                </label>
+                <input
+                  {...register(`country_contacts.${watch('country')}.responsible_phone`, { 
+                    required: 'Phone number is required',
+                    pattern: {
+                      value: /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,9}$/,
+                      message: 'Please enter a valid phone number'
+                    }
+                  })}
+                  className={`form-input ${errors.country_contacts?.[watch('country')]?.responsible_phone ? 'error' : ''}`}
+                  placeholder={`${countryCode[watch('country')]} 700 000 000`}
+                />
+                {errors.country_contacts?.[watch('country')]?.responsible_phone && (
+                  <span className="error-message">{errors.country_contacts[watch('country')].responsible_phone.message}</span>
+                )}
               </div>
+            )}
+
+            {watch('country') && (
+              <div className="form-group">
+                <label className="form-label">
+                  Responsible Person Email
+                  <span className="required-mark">*</span>
+                </label>
+                <input
+                  {...register(`country_contacts.${watch('country')}.responsible_email`, { 
+                    required: 'Email is required',
+                    pattern: {
+                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                      message: 'Please enter a valid email address'
+                    }
+                  })}
+                  type="email"
+                  className={`form-input ${errors.country_contacts?.[watch('country')]?.responsible_email ? 'error' : ''}`}
+                  placeholder={`${watch('country')}.contact@company.com`}
+                />
+                {errors.country_contacts?.[watch('country')]?.responsible_email && (
+                  <span className="error-message">{errors.country_contacts[watch('country')].responsible_email.message}</span>
+                )}
+              </div>
+            )}
+
+            {watch('country') && (
+              <div className="form-group">
+                <label className="form-label">
+                  Company Phone
+                  <span className="required-mark">*</span>
+                </label>
+                <input
+                  {...register(`country_contacts.${watch('country')}.company_phone`, { 
+                    required: 'Company phone is required',
+                    pattern: {
+                      value: /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,9}$/,
+                      message: 'Please enter a valid phone number'
+                    }
+                  })}
+                  className={`form-input ${errors.country_contacts?.[watch('country')]?.company_phone ? 'error' : ''}`}
+                  placeholder={`${countryCode[watch('country')]} 700 000 000`}
+                />
+                {errors.country_contacts?.[watch('country')]?.company_phone && (
+                  <span className="error-message">{errors.country_contacts[watch('country')].company_phone.message}</span>
+                )}
+              </div>
+            )}
+
+            {watch('country') && (
+              <div className="form-group">
+                <label className="form-label">
+                  Company Email
+                  <span className="required-mark">*</span>
+                </label>
+                <input
+                  {...register(`country_contacts.${watch('country')}.company_email`, { 
+                    required: 'Company email is required',
+                    pattern: {
+                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                      message: 'Please enter a valid email address'
+                    }
+                  })}
+                  type="email"
+                  className={`form-input ${errors.country_contacts?.[watch('country')]?.company_email ? 'error' : ''}`}
+                  placeholder={`${watch('country')}@company.com`}
+                />
+                {errors.country_contacts?.[watch('country')]?.company_email && (
+                  <span className="error-message">{errors.country_contacts[watch('country')].company_email.message}</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="form-footer">
+            <div className="form-buttons">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="reset-button"
+                disabled={isSubmitting || !isDirty}
+              >
+                Reset Form
+              </button>
+              <button
+                type="submit"
+                className="submit-button"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Saving...' : isEdit ? 'Update Company' : 'Add Company'}
+              </button>
             </div>
           </div>
         </form>
