@@ -115,4 +115,17 @@ export const deleteCompany = async (id) => {
   }
 }
 
+export const bulkImportCompanies = async (companies) => {
+  try {
+    const response = await apiClient.post('/companies/bulk', companies);
+    return response.data;
+  } catch (error) {
+    console.error('Error importing companies:', error);
+    throw {
+      userMessage: error.response?.data?.error || 'Failed to import companies',
+      details: error.response?.data?.details
+    };
+  }
+};
+
 export default apiClient

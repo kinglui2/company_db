@@ -382,3 +382,132 @@ exports.updateCompany = (req, res) => {
         });
     });
 };
+
+// Bulk import companies with their country contacts
+exports.bulkImportCompanies = (req, res) => {
+    const companies = req.body;
+    
+    if (!Array.isArray(companies) || companies.length === 0) {
+        return res.status(400).json({ 
+            success: false,
+            error: 'Invalid input: expected an array of companies' 
+        });
+    }
+
+    // Start a transaction
+    db.beginTransaction(err => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        // Process each company
+        const processNextCompany = (index) => {
+            if (index >= companies.length) {
+                // All companies processed
+                db.commit(err => {
+                    if (err) {
+                        return db.rollback(() => {
+                            res.status(500).json({ error: err.message });
+                        });
+                    }
+                    res.json({
+                        success: true,
+                        message: `Successfully imported ${successCount} companies${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+                        details: {
+                            successCount,
+                            errorCount,
+                            errors: errorCount > 0 ? errors : undefined
+                        }
+                    });
+                });
+                return;
+            }
+
+            const company = companies[index];
+            const {
+                company_name,
+                business_type,
+                industry,
+                website,
+                presence_in_kenya,
+                presence_in_uganda,
+                presence_in_tanzania,
+                presence_in_rwanda,
+                country_contacts
+            } = company;
+
+            // Insert the company
+            const companySql = `INSERT INTO companies (
+                company_name, business_type, industry, website,
+                presence_in_kenya, presence_in_uganda, presence_in_tanzania, presence_in_rwanda
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+            db.query(companySql, [
+                company_name, business_type, industry, website,
+                presence_in_kenya, presence_in_uganda, presence_in_tanzania, presence_in_rwanda
+            ], (err, result) => {
+                if (err) {
+                    errorCount++;
+                    errors.push({
+                        index,
+                        company: company_name,
+                        error: err.message
+                    });
+                    processNextCompany(index + 1);
+                    return;
+                }
+
+                const companyId = result.insertId;
+
+                // Insert country contacts if any
+                if (country_contacts && Object.keys(country_contacts).length > 0) {
+                    const contactsSql = `INSERT INTO country_contacts (
+                        company_id, country, responsible_person, company_email,
+                        company_phone, responsible_phone, responsible_email
+                    ) VALUES ?`;
+
+                    const contactsValues = Object.entries(country_contacts)
+                        .filter(([country, contact]) => contact.responsible_person || contact.company_email || contact.company_phone)
+                        .map(([country, contact]) => [
+                            companyId,
+                            country,
+                            contact.responsible_person,
+                            contact.company_email,
+                            contact.company_phone,
+                            contact.responsible_phone,
+                            contact.responsible_email
+                        ]);
+
+                    if (contactsValues.length > 0) {
+                        db.query(contactsSql, [contactsValues], (err) => {
+                            if (err) {
+                                errorCount++;
+                                errors.push({
+                                    index,
+                                    company: company_name,
+                                    error: `Failed to add contacts: ${err.message}`
+                                });
+                            } else {
+                                successCount++;
+                            }
+                            processNextCompany(index + 1);
+                        });
+                    } else {
+                        successCount++;
+                        processNextCompany(index + 1);
+                    }
+                } else {
+                    successCount++;
+                    processNextCompany(index + 1);
+                }
+            });
+        };
+
+        // Start processing companies
+        processNextCompany(0);
+    });
+};

@@ -1,6 +1,6 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { getCompanies, deleteCompany } from '../api/companies'
+import { getCompanies, deleteCompany, bulkImportCompanies } from '../api/companies'
 import Toast from './Toast'
 import '../styles/CompaniesList.css'
 
@@ -23,6 +23,9 @@ const CompaniesList = forwardRef((props, ref) => {
     businessType: '',
     industry: ''
   })
+  const [importPreview, setImportPreview] = useState(null);
+  const [importErrors, setImportErrors] = useState([]);
+  const fileInputRef = useRef(null);
 
   const handleRefresh = async () => {
     setLoading(true)
@@ -278,6 +281,206 @@ const CompaniesList = forwardRef((props, ref) => {
     }
   };
 
+  const handleBulkImport = () => {
+    // Create CSV template with headers and example data
+    const headers = [
+      'Company Name',
+      'Business Type',
+      'Industry',
+      'Website',
+      'Kenya Presence',
+      'Uganda Presence',
+      'Tanzania Presence',
+      'Rwanda Presence',
+      'Kenya Contact Person',
+      'Kenya Phone',
+      'Kenya Email',
+      'Kenya Company Phone',
+      'Kenya Company Email',
+      'Uganda Contact Person',
+      'Uganda Phone',
+      'Uganda Email',
+      'Uganda Company Phone',
+      'Uganda Company Email',
+      'Tanzania Contact Person',
+      'Tanzania Phone',
+      'Tanzania Email',
+      'Tanzania Company Phone',
+      'Tanzania Company Email',
+      'Rwanda Contact Person',
+      'Rwanda Phone',
+      'Rwanda Email',
+      'Rwanda Company Phone',
+      'Rwanda Company Email'
+    ];
+
+    // Example data row
+    const exampleData = [
+      'Example Company Ltd',
+      'Manufacturing',
+      'Technology',
+      'www.example.com',
+      'true',
+      'true',
+      'false',
+      'false',
+      'John Doe',
+      '+254 700 000 000',
+      'john@example.com',
+      '+254 700 000 001',
+      'info@example.com',
+      'Jane Smith',
+      '+256 700 000 000',
+      'jane@example.com',
+      '+256 700 000 001',
+      'info@example.com',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      ''
+    ];
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      exampleData.join(','),
+      // Add instructions row
+      'Instructions:',
+      '1. Fill in the company details in the first row',
+      '2. For presence fields, use "true" or "false"',
+      '3. For phone numbers, use the format: +[country code] [number]',
+      '4. Leave fields empty if not applicable',
+      '5. Do not modify the header row',
+      '6. Save the file as CSV before importing'
+    ].join('\n');
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'company_import_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csvText = e.target.result;
+        const lines = csvText.split('\n');
+        
+        // Skip the header row and instructions
+        const dataRows = lines.slice(1, lines.findIndex(line => line.startsWith('Instructions:')));
+        
+        const parsedData = dataRows.map(row => {
+          const values = row.split(',').map(value => value.trim());
+          return {
+            company_name: values[0],
+            business_type: values[1],
+            industry: values[2],
+            website: values[3],
+            presence_in_kenya: values[4] === 'true',
+            presence_in_uganda: values[5] === 'true',
+            presence_in_tanzania: values[6] === 'true',
+            presence_in_rwanda: values[7] === 'true',
+            country_contacts: {
+              kenya: {
+                responsible_person: values[8],
+                responsible_phone: values[9],
+                responsible_email: values[10],
+                company_phone: values[11],
+                company_email: values[12]
+              },
+              uganda: {
+                responsible_person: values[13],
+                responsible_phone: values[14],
+                responsible_email: values[15],
+                company_phone: values[16],
+                company_email: values[17]
+              },
+              tanzania: {
+                responsible_person: values[18],
+                responsible_phone: values[19],
+                responsible_email: values[20],
+                company_phone: values[21],
+                company_email: values[22]
+              },
+              rwanda: {
+                responsible_person: values[23],
+                responsible_phone: values[24],
+                responsible_email: values[25],
+                company_phone: values[26],
+                company_email: values[27]
+              }
+            }
+          };
+        });
+
+        // Validate the data
+        const errors = [];
+        parsedData.forEach((company, index) => {
+          if (!company.company_name) {
+            errors.push(`Row ${index + 2}: Company name is required`);
+          }
+          if (!company.business_type) {
+            errors.push(`Row ${index + 2}: Business type is required`);
+          }
+          if (!company.industry) {
+            errors.push(`Row ${index + 2}: Industry is required`);
+          }
+          // Add more validation as needed
+        });
+
+        setImportErrors(errors);
+        setImportPreview(parsedData);
+      } catch (error) {
+        console.error('Error parsing CSV:', error);
+        setToast({
+          message: 'Error parsing CSV file. Please check the format and try again.',
+          type: 'error'
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportConfirm = async () => {
+    if (!importPreview || importErrors.length > 0) return;
+
+    try {
+      const result = await bulkImportCompanies(importPreview);
+      setToast({
+        message: result.message,
+        type: 'success'
+      });
+      setImportPreview(null);
+      setImportErrors([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      // Refresh the companies list
+      handleRefresh();
+    } catch (error) {
+      setToast({
+        message: error.userMessage || 'Failed to import companies',
+        type: 'error'
+      });
+    }
+  };
+
   return (
     <div className="companies-container">
       {toast && (
@@ -366,18 +569,76 @@ const CompaniesList = forwardRef((props, ref) => {
               </div>
             </div>
           </div>
-          <button 
-            onClick={handleExport}
-            className="export-button"
-            disabled={filteredCompanies.length === 0}
-          >
-            <svg className="export-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export CSV
-          </button>
+          <div className="filter-actions">
+            <button 
+              onClick={handleExport}
+              className="export-button"
+              disabled={filteredCompanies.length === 0}
+            >
+              Export CSV
+            </button>
+            <button 
+              onClick={handleBulkImport}
+              className="template-button"
+            >
+              Download Template
+            </button>
+            <div className="import-container">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".csv"
+                onChange={handleFileUpload}
+                className="file-input"
+                style={{ display: 'none' }}
+              />
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="import-button"
+              >
+                Bulk Import
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {importPreview && (
+        <div className="import-preview">
+          <h3>Import Preview ({importPreview.length} companies)</h3>
+          {importErrors.length > 0 && (
+            <div className="import-errors">
+              <h4>Validation Errors:</h4>
+              <ul>
+                {importErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="preview-actions">
+            <button 
+              onClick={() => {
+                setImportPreview(null);
+                setImportErrors([]);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+              }}
+              className="cancel-button"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleImportConfirm}
+              className="confirm-button"
+              disabled={importErrors.length > 0}
+            >
+              Confirm Import
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="table-container">
