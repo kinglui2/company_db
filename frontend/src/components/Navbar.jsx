@@ -1,15 +1,27 @@
 import { Link, useLocation } from 'react-router-dom'
 import { Bars3Icon } from '@heroicons/react/24/outline'
+import '../styles/Navbar.css';
 
 export default function Navbar({ onRefresh, showRefresh }) {
   const location = useLocation()
   const isFormPage = location.pathname.includes('/companies/new') || location.pathname.includes('/edit')
 
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   return (
-    <nav className="bg-white shadow-sm">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-xl font-semibold text-gray-800">
+    <nav className="navbar">
+      <div className="navbar-content">
+        <div className="navbar-left">
+          <Link 
+            to="/" 
+            className="navbar-title"
+            onClick={scrollToTop}
+          >
             Company DB
           </Link>
           {showRefresh && (
@@ -25,10 +37,10 @@ export default function Navbar({ onRefresh, showRefresh }) {
           )}
         </div>
         {!isFormPage && (
-          <div className="flex space-x-4">
+          <div className="navbar-right">
             <Link 
               to="/companies/new" 
-              className="px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+              className="add-company-btn"
             >
               Add Company
             </Link>

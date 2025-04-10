@@ -1,9 +1,17 @@
 .companies-container {
   width: 100vw;
+  min-width: 100vw;
   min-height: 100vh;
-  padding: 2rem;
+  padding: 5px;
+  margin: 0;
   background-color: #1a1a1a;
   color: #ffffff;
+  box-sizing: border-box;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
 }
 
 .header-container {
@@ -387,17 +395,17 @@
   }
 }
 
-.filters-header {
+.filter-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
 }
 
-.filters-title {
+.filter-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #2d3748;
+  color: #ffffff;
   margin: 0;
 }
 
@@ -414,6 +422,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;
+  margin-left: auto; /* Pushes button to right */
 }
 
 .export-button:hover {

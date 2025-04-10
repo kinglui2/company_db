@@ -120,52 +120,71 @@ export default function CompanyForm() {
     try {
       setIsSubmitting(true)
       
-      // Set presence flags based on selected country
+      // Get the selected country for contacts
       const selectedCountry = data.country;
-      const presenceFlags = {
-        presence_in_kenya: selectedCountry === 'kenya',
-        presence_in_uganda: selectedCountry === 'uganda',
-        presence_in_tanzania: selectedCountry === 'tanzania',
-        presence_in_rwanda: selectedCountry === 'rwanda'
-      };
       
-      // Prepare company data with correct field names
+      // Prepare the new contact data for the selected country
+      const newContactData = {
+        [selectedCountry]: {
+          responsible_person: data.country_contacts[selectedCountry].responsible_person,
+          responsible_phone: data.country_contacts[selectedCountry].responsible_phone,
+          responsible_email: data.country_contacts[selectedCountry].responsible_email,
+          company_phone: data.country_contacts[selectedCountry].company_phone,
+          company_email: data.country_contacts[selectedCountry].company_email
+        }
+      };
+
+      // Prepare company data with presence flags
       const companyData = {
         company_name: data.name,
         business_type: data.business_type,
         industry: data.industry,
         website: data.website,
-        ...presenceFlags,
-        countryContacts: {
-          [selectedCountry]: data.country_contacts[selectedCountry]
-        }
+        presence_in_kenya: data.presence_in_kenya || false,
+        presence_in_uganda: data.presence_in_uganda || false,
+        presence_in_tanzania: data.presence_in_tanzania || false,
+        presence_in_rwanda: data.presence_in_rwanda || false,
+        countryContacts: newContactData
       };
 
       if (isEdit) {
-        await updateCompany(id, companyData)
+        // Fetch existing company data to preserve other country contacts
+        const existingCompany = await getCompany(id);
+        
+        // Create a copy of existing contacts or initialize empty object
+        const existingContacts = existingCompany.country_contacts || {};
+        
+        // Merge existing contacts with the new one
+        companyData.countryContacts = {
+          ...existingContacts,
+          ...newContactData
+        };
+
+        await updateCompany(id, companyData);
         setToast({
           message: 'Company updated successfully',
           type: 'success'
-        })
+        });
       } else {
-        await addCompany(companyData)
+        await addCompany(companyData);
         setToast({
-          message: 'Company added successfully', 
+          message: 'Company added successfully',
           type: 'success'
-        })
+        });
       }
-      setIsDirty(false)
-      setTimeout(() => navigate('/'), 1500)
+      
+      setIsDirty(false);
+      setTimeout(() => navigate('/'), 1500);
     } catch (error) {
+      console.error('Error submitting form:', error);
       setToast({
-        message: error.userMessage || 'Failed to save company',
+        message: error.userMessage || 'Failed to save company details',
         type: 'error'
-      })
-      console.error('Error saving company:', error)
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset the form? All changes will be lost.')) {
@@ -268,9 +287,10 @@ export default function CompanyForm() {
               <label className="form-label">Website</label>
               <input
                 {...register('website', {
-                  pattern: {
-                    value: /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/,
-                    message: 'Please enter a valid website URL'
+                  validate: (value) => {
+                    if (!value) return true; // Allow empty values
+                    const urlPattern = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/;
+                    return urlPattern.test(value) || 'Please enter a valid website URL (e.g., https://example.com)';
                   }
                 })}
                 className={`form-input ${errors.website ? 'error' : ''}`}
@@ -279,9 +299,48 @@ export default function CompanyForm() {
               {errors.website && <span className="error-message">{errors.website.message}</span>}
             </div>
 
+            {/* Country Presence Checkboxes */}
+            <div className="form-group">
+              <label className="form-label">Company Presence</label>
+              <div className="form-presence-grid">
+                <div className="form-presence-item">
+                  <input
+                    type="checkbox"
+                    {...register('presence_in_kenya')}
+                    className="form-checkbox"
+                  />
+                  <label className="form-presence-label">Kenya</label>
+                </div>
+                <div className="form-presence-item">
+                  <input
+                    type="checkbox"
+                    {...register('presence_in_uganda')}
+                    className="form-checkbox"
+                  />
+                  <label className="form-presence-label">Uganda</label>
+                </div>
+                <div className="form-presence-item">
+                  <input
+                    type="checkbox"
+                    {...register('presence_in_tanzania')}
+                    className="form-checkbox"
+                  />
+                  <label className="form-presence-label">Tanzania</label>
+                </div>
+                <div className="form-presence-item">
+                  <input
+                    type="checkbox"
+                    {...register('presence_in_rwanda')}
+                    className="form-checkbox"
+                  />
+                  <label className="form-presence-label">Rwanda</label>
+                </div>
+              </div>
+            </div>
+
             <div className="form-group">
               <label className="form-label">
-                Country
+                Select Country for Contact Details
                 <span className="required-mark">*</span>
               </label>
               <select
@@ -335,12 +394,29 @@ export default function CompanyForm() {
                   {...register(`country_contacts.${watch('country')}.responsible_phone`, { 
                     required: 'Phone number is required',
                     pattern: {
-                      value: /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,9}$/,
-                      message: 'Please enter a valid phone number'
+                      value: /^\+?[0-9]{3}\s*[0-9]{3}\s*[0-9]{3}\s*[0-9]{3}$/,
+                      message: 'Please enter a valid phone number (e.g., +256 414 250 110)'
+                    },
+                    validate: (value) => {
+                      const cleanValue = value.replace(/\s+/g, '');
+                      const countryCodeWithoutPlus = countryCode[watch('country')].replace('+', '');
+                      
+                      // Check country code
+                      if (!cleanValue.startsWith(countryCodeWithoutPlus) && !cleanValue.startsWith('+' + countryCodeWithoutPlus)) {
+                        return `Phone number must start with ${countryCode[watch('country')]}`;
+                      }
+                      
+                      // Check total length (country code + 9 digits)
+                      const numberWithoutCountryCode = cleanValue.replace(/^\+?[0-9]{3}/, '');
+                      if (numberWithoutCountryCode.length !== 9) {
+                        return 'Phone number must be 9 digits after the country code';
+                      }
+                      
+                      return true;
                     }
                   })}
                   className={`form-input ${errors.country_contacts?.[watch('country')]?.responsible_phone ? 'error' : ''}`}
-                  placeholder={`${countryCode[watch('country')]} 700 000 000`}
+                  placeholder={`${countryCode[watch('country')]} 414 250 110`}
                 />
                 {errors.country_contacts?.[watch('country')]?.responsible_phone && (
                   <span className="error-message">{errors.country_contacts[watch('country')].responsible_phone.message}</span>
@@ -382,12 +458,29 @@ export default function CompanyForm() {
                   {...register(`country_contacts.${watch('country')}.company_phone`, { 
                     required: 'Company phone is required',
                     pattern: {
-                      value: /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,4}[-\s.]?[0-9]{1,9}$/,
-                      message: 'Please enter a valid phone number'
+                      value: /^\+?[0-9]{3}\s*[0-9]{3}\s*[0-9]{3}\s*[0-9]{3}$/,
+                      message: 'Please enter a valid phone number (e.g., +256 414 250 110)'
+                    },
+                    validate: (value) => {
+                      const cleanValue = value.replace(/\s+/g, '');
+                      const countryCodeWithoutPlus = countryCode[watch('country')].replace('+', '');
+                      
+                      // Check country code
+                      if (!cleanValue.startsWith(countryCodeWithoutPlus) && !cleanValue.startsWith('+' + countryCodeWithoutPlus)) {
+                        return `Phone number must start with ${countryCode[watch('country')]}`;
+                      }
+                      
+                      // Check total length (country code + 9 digits)
+                      const numberWithoutCountryCode = cleanValue.replace(/^\+?[0-9]{3}/, '');
+                      if (numberWithoutCountryCode.length !== 9) {
+                        return 'Phone number must be 9 digits after the country code';
+                      }
+                      
+                      return true;
                     }
                   })}
                   className={`form-input ${errors.country_contacts?.[watch('country')]?.company_phone ? 'error' : ''}`}
-                  placeholder={`${countryCode[watch('country')]} 700 000 000`}
+                  placeholder={`${countryCode[watch('country')]} 414 250 110`}
                 />
                 {errors.country_contacts?.[watch('country')]?.company_phone && (
                   <span className="error-message">{errors.country_contacts[watch('country')].company_phone.message}</span>
@@ -442,5 +535,5 @@ export default function CompanyForm() {
         </form>
       </div>
     </div>
-  )
+  );
 }

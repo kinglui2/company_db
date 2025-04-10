@@ -285,50 +285,84 @@ exports.updateCompany = (req, res) => {
 
             // Then update country contacts
             if (countryContacts && Object.keys(countryContacts).length > 0) {
-                // First delete existing contacts for this company
-                const deleteSql = 'DELETE FROM country_contacts WHERE company_id = ?';
-                db.query(deleteSql, [id], (err) => {
-                    if (err) {
-                        return db.rollback(() => {
-                            res.status(500).json({ error: err.message });
-                        });
-                    }
-
-                    // Then insert new contacts
-                    const contactsSql = `INSERT INTO country_contacts (
-                        company_id, country, responsible_person, company_email,
-                        company_phone, responsible_phone, responsible_email
-                    ) VALUES ?`;
-
-                    const contactsValues = Object.entries(countryContacts).map(([country, contact]) => [
-                        id,
-                        country,
-                        contact.responsible_person,
-                        contact.company_email,
-                        contact.company_phone,
-                        contact.responsible_phone,
-                        contact.responsible_email
-                    ]);
-
-                    db.query(contactsSql, [contactsValues], (err) => {
-                        if (err) {
-                            return db.rollback(() => {
-                                res.status(500).json({ error: err.message });
-                            });
-                        }
-
-                        db.commit(err => {
+                // For each country in the contacts, update or insert
+                const updates = [];
+                const inserts = [];
+                
+                Object.entries(countryContacts).forEach(([country, contact]) => {
+                    if (contact.responsible_person || contact.company_email || contact.company_phone || 
+                        contact.responsible_phone || contact.responsible_email) {
+                        // Check if contact exists for this country
+                        const checkSql = 'SELECT id FROM country_contacts WHERE company_id = ? AND country = ?';
+                        db.query(checkSql, [id, country], (err, result) => {
                             if (err) {
                                 return db.rollback(() => {
                                     res.status(500).json({ error: err.message });
                                 });
                             }
-                            res.json({ 
-                                success: true,
-                                message: 'Company updated successfully',
-                                updatedId: id
-                            });
+
+                            if (result.length > 0) {
+                                // Update existing contact
+                                const updateSql = `UPDATE country_contacts SET 
+                                    responsible_person = ?,
+                                    company_email = ?,
+                                    company_phone = ?,
+                                    responsible_phone = ?,
+                                    responsible_email = ?
+                                    WHERE company_id = ? AND country = ?`;
+                                
+                                db.query(updateSql, [
+                                    contact.responsible_person,
+                                    contact.company_email,
+                                    contact.company_phone,
+                                    contact.responsible_phone,
+                                    contact.responsible_email,
+                                    id,
+                                    country
+                                ], (err) => {
+                                    if (err) {
+                                        return db.rollback(() => {
+                                            res.status(500).json({ error: err.message });
+                                        });
+                                    }
+                                });
+                            } else {
+                                // Insert new contact
+                                const insertSql = `INSERT INTO country_contacts (
+                                    company_id, country, responsible_person, company_email,
+                                    company_phone, responsible_phone, responsible_email
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+                                
+                                db.query(insertSql, [
+                                    id,
+                                    country,
+                                    contact.responsible_person,
+                                    contact.company_email,
+                                    contact.company_phone,
+                                    contact.responsible_phone,
+                                    contact.responsible_email
+                                ], (err) => {
+                                    if (err) {
+                                        return db.rollback(() => {
+                                            res.status(500).json({ error: err.message });
+                                        });
+                                    }
+                                });
+                            }
                         });
+                    }
+                });
+
+                db.commit(err => {
+                    if (err) {
+                        return db.rollback(() => {
+                            res.status(500).json({ error: err.message });
+                        });
+                    }
+                    res.json({ 
+                        success: true,
+                        message: 'Company updated successfully',
+                        updatedId: id
                     });
                 });
             } else {

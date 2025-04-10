@@ -146,99 +146,136 @@ const CompaniesList = forwardRef((props, ref) => {
   };
 
   const handleExport = () => {
-    // Create a more detailed CSV with proper formatting for Excel
-    const headers = [
-      'Company Name',
-      'Business Type',
-      'Industry',
-      'Website',
-      'Presence',
-      'Kenya Contact',
-      'Kenya Phone',
-      'Kenya Email',
-      'Uganda Contact',
-      'Uganda Phone',
-      'Uganda Email',
-      'Tanzania Contact',
-      'Tanzania Phone',
-      'Tanzania Email',
-      'Rwanda Contact',
-      'Rwanda Phone',
-      'Rwanda Email'
-    ];
-    
-    // Format the data with proper escaping and organization
-    const csvData = filteredCompanies.map(company => {
-      // Get presence information
-      const presence = [
-        company.presence_in_kenya ? 'Kenya' : '',
-        company.presence_in_uganda ? 'Uganda' : '',
-        company.presence_in_tanzania ? 'Tanzania' : '',
-        company.presence_in_rwanda ? 'Rwanda' : ''
-      ].filter(Boolean).join(', ');
+    // Show loading state
+    setToast({
+      message: 'Preparing export...',
+      type: 'info',
+      duration: 2000
+    });
+
+    try {
+      // Create a more detailed CSV with proper formatting for Excel
+      const headers = [
+        'Company Name',
+        'Business Type',
+        'Industry',
+        'Website',
+        'Presence',
+        'Kenya Contact',
+        'Kenya Phone',
+        'Kenya Email',
+        'Uganda Contact',
+        'Uganda Phone',
+        'Uganda Email',
+        'Tanzania Contact',
+        'Tanzania Phone',
+        'Tanzania Email',
+        'Rwanda Contact',
+        'Rwanda Phone',
+        'Rwanda Email'
+      ];
       
-      // Get contact information for each country
-      const getCountryContacts = (country) => {
-        if (!company.countryContacts || !company.countryContacts[country]) {
-          return ['', '', ''];
-        }
+      // Format the data with proper escaping and organization
+      const csvData = filteredCompanies.map(company => {
+        // Get presence information
+        const presence = [
+          company.presence_in_kenya ? 'Kenya' : '',
+          company.presence_in_uganda ? 'Uganda' : '',
+          company.presence_in_tanzania ? 'Tanzania' : '',
+          company.presence_in_rwanda ? 'Rwanda' : ''
+        ].filter(Boolean).join(', ');
         
-        const contact = company.countryContacts[country];
+        // Get contact information for each country
+        const getCountryContacts = (country) => {
+          if (!company.countryContacts || !company.countryContacts[country]) {
+            return ['', '', ''];
+          }
+          
+          const contact = company.countryContacts[country];
+          return [
+            contact.responsible_person || '',
+            contact.responsible_phone || '',
+            contact.responsible_email || ''
+          ];
+        };
+        
+        const kenyaContacts = getCountryContacts('kenya');
+        const ugandaContacts = getCountryContacts('uganda');
+        const tanzaniaContacts = getCountryContacts('tanzania');
+        const rwandaContacts = getCountryContacts('rwanda');
+        
+        // Return formatted row
         return [
-          contact.responsible_person || '',
-          contact.responsible_phone || '',
-          contact.responsible_email || ''
+          company.company_name,
+          company.business_type,
+          company.industry,
+          company.website || '',
+          presence,
+          ...kenyaContacts,
+          ...ugandaContacts,
+          ...tanzaniaContacts,
+          ...rwandaContacts
         ];
+      });
+      
+      // Create CSV content with proper escaping
+      const escapeCSV = (text) => {
+        if (text === null || text === undefined) return '""';
+        const string = String(text);
+        if (string.includes(',') || string.includes('"') || string.includes('\n')) {
+          return `"${string.replace(/"/g, '""')}"`;
+        }
+        return string;
       };
       
-      const kenyaContacts = getCountryContacts('kenya');
-      const ugandaContacts = getCountryContacts('uganda');
-      const tanzaniaContacts = getCountryContacts('tanzania');
-      const rwandaContacts = getCountryContacts('rwanda');
+      const csvContent = [
+        headers.map(escapeCSV).join(','),
+        ...csvData.map(row => row.map(escapeCSV).join(','))
+      ].join('\n');
       
-      // Return formatted row
-      return [
-        company.company_name,
-        company.business_type,
-        company.industry,
-        company.website || '',
-        presence,
-        ...kenyaContacts,
-        ...ugandaContacts,
-        ...tanzaniaContacts,
-        ...rwandaContacts
-      ];
-    });
-    
-    // Create CSV content with proper escaping
-    const escapeCSV = (text) => {
-      if (text === null || text === undefined) return '""';
-      const string = String(text);
-      if (string.includes(',') || string.includes('"') || string.includes('\n')) {
-        return `"${string.replace(/"/g, '""')}"`;
-      }
-      return string;
-    };
-    
-    const csvContent = [
-      headers.map(escapeCSV).join(','),
-      ...csvData.map(row => row.map(escapeCSV).join(','))
-    ].join('\n');
-    
-    // Add BOM for Excel to recognize UTF-8
-    const BOM = '\uFEFF';
-    const csvContentWithBOM = BOM + csvContent;
-    
-    // Create and trigger download
-    const blob = new Blob([csvContentWithBOM], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `companies_export_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Add BOM for Excel to recognize UTF-8
+      const BOM = '\uFEFF';
+      const csvContentWithBOM = BOM + csvContent;
+      
+      // Create and trigger download
+      const blob = new Blob([csvContentWithBOM], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      // Generate filename with filter information
+      const filterInfo = [];
+      if (filters.businessType) filterInfo.push(`business_${filters.businessType}`);
+      if (filters.industry) filterInfo.push(`industry_${filters.industry}`);
+      if (filters.country) filterInfo.push(`country_${filters.country}`);
+      
+      const filename = `companies_export_${new Date().toISOString().split('T')[0]}${
+        filterInfo.length ? `_${filterInfo.join('_')}` : ''
+      }.csv`;
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up
+      URL.revokeObjectURL(url);
+      
+      // Show success message
+      setToast({
+        message: `Successfully exported ${filteredCompanies.length} companies`,
+        type: 'success',
+        duration: 3000
+      });
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      setToast({
+        message: 'Failed to export companies. Please try again.',
+        type: 'error',
+        duration: 3000
+      });
+    }
   };
 
   return (
@@ -250,19 +287,6 @@ const CompaniesList = forwardRef((props, ref) => {
       )}
 
       <div className="filters-card">
-        <div className="filters-header">
-          <h2 className="filters-title">Filters</h2>
-          <button 
-            onClick={handleExport}
-            className="export-button"
-            disabled={filteredCompanies.length === 0}
-          >
-            <svg className="export-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Export CSV
-          </button>
-        </div>
         <div className="filter-card">
           <div className="filter-content">
             <h3 className="filter-title">Filter Companies</h3>
@@ -342,6 +366,16 @@ const CompaniesList = forwardRef((props, ref) => {
               </div>
             </div>
           </div>
+          <button 
+            onClick={handleExport}
+            className="export-button"
+            disabled={filteredCompanies.length === 0}
+          >
+            <svg className="export-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export CSV
+          </button>
         </div>
       </div>
 

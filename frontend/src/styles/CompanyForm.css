@@ -265,4 +265,28 @@
     min-width: 100px;
     text-align: center;
   }
+}
+
+.form-presence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.form-presence-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-checkbox {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.form-presence-label {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #374151;
 } 
