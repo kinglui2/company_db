@@ -30,7 +30,7 @@ export default function CompanyForm() {
     formState: { errors }
   } = useForm({
     defaultValues: {
-      name: '',
+      company_name: '',
       business_type: '',
       industry: '',
       website: '',
@@ -85,7 +85,7 @@ export default function CompanyForm() {
         try {
           const company = await getCompany(id)
           // Set basic company info
-          setValue('name', company.name)
+          setValue('company_name', company.company_name)
           setValue('business_type', company.business_type)
           setValue('industry', company.industry)
           setValue('website', company.website)
@@ -136,7 +136,7 @@ export default function CompanyForm() {
 
       // Prepare company data with presence flags
       const companyData = {
-        company_name: data.name,
+        company_name: data.company_name,
         business_type: data.business_type,
         industry: data.industry,
         website: data.website,
@@ -228,7 +228,7 @@ export default function CompanyForm() {
                 <span className="required-mark">*</span>
               </label>
               <input
-                {...register('name', { 
+                {...register('company_name', { 
                   required: 'Company name is required',
                   minLength: {
                     value: 2,
@@ -239,10 +239,10 @@ export default function CompanyForm() {
                     message: 'Company name cannot exceed 100 characters'
                   }
                 })}
-                className={`form-input ${errors.name ? 'error' : ''}`}
+                className={`form-input ${errors.company_name ? 'error' : ''}`}
                 placeholder="Enter company name"
               />
-              {errors.name && <span className="error-message">{errors.name.message}</span>}
+              {errors.company_name && <span className="error-message">{errors.company_name.message}</span>}
             </div>
 
             <div className="form-group">

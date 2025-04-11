@@ -164,18 +164,30 @@ const CompaniesList = forwardRef((props, ref) => {
         'Industry',
         'Website',
         'Presence',
-        'Kenya Contact',
-        'Kenya Phone',
-        'Kenya Email',
-        'Uganda Contact',
-        'Uganda Phone',
-        'Uganda Email',
-        'Tanzania Contact',
-        'Tanzania Phone',
-        'Tanzania Email',
-        'Rwanda Contact',
-        'Rwanda Phone',
-        'Rwanda Email'
+        // Kenya Contacts
+        'Kenya Responsible Person',
+        'Kenya Company Phone',
+        'Kenya Company Email',
+        'Kenya Responsible Phone',
+        'Kenya Responsible Email',
+        // Uganda Contacts
+        'Uganda Responsible Person',
+        'Uganda Company Phone',
+        'Uganda Company Email',
+        'Uganda Responsible Phone',
+        'Uganda Responsible Email',
+        // Tanzania Contacts
+        'Tanzania Responsible Person',
+        'Tanzania Company Phone',
+        'Tanzania Company Email',
+        'Tanzania Responsible Phone',
+        'Tanzania Responsible Email',
+        // Rwanda Contacts
+        'Rwanda Responsible Person',
+        'Rwanda Company Phone',
+        'Rwanda Company Email',
+        'Rwanda Responsible Phone',
+        'Rwanda Responsible Email'
       ];
       
       // Format the data with proper escaping and organization
@@ -188,20 +200,23 @@ const CompaniesList = forwardRef((props, ref) => {
           company.presence_in_rwanda ? 'Rwanda' : ''
         ].filter(Boolean).join(', ');
         
-        // Get contact information for each country
+        // Helper function to get country contacts
         const getCountryContacts = (country) => {
           if (!company.countryContacts || !company.countryContacts[country]) {
-            return ['', '', ''];
+            return ['', '', '', '', '']; // Return empty values for all contact fields
           }
           
           const contact = company.countryContacts[country];
           return [
             contact.responsible_person || '',
+            contact.company_phone || '',
+            contact.company_email || '',
             contact.responsible_phone || '',
             contact.responsible_email || ''
           ];
         };
         
+        // Get contacts for each country
         const kenyaContacts = getCountryContacts('kenya');
         const ugandaContacts = getCountryContacts('uganda');
         const tanzaniaContacts = getCountryContacts('tanzania');
@@ -334,14 +349,16 @@ const CompaniesList = forwardRef((props, ref) => {
       'jane@example.com',
       '+256 700 000 001',
       'info@example.com',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
+      'Timmy turner',
+      '+255 700 000 000',
+      'timmy@example.com',
+      '+255 700 000 123',
+      'info@example.com',
+      'Bob Marley',
+      '+250 700 000 000',
+      'bob@example.com',
+      '+250 700 000 012',
+      'info@example.com',
       '',
       ''
     ];
@@ -351,13 +368,14 @@ const CompaniesList = forwardRef((props, ref) => {
       headers.join(','),
       exampleData.join(','),
       // Add instructions row
-      'Instructions:',
+      '===== IMPORTANT INSTRUCTIONS =====',
       '1. Fill in the company details in the first row',
-      '2. For presence fields, use "true" or "false"',
-      '3. For phone numbers, use the format: +[country code] [number]',
-      '4. Leave fields empty if not applicable',
-      '5. Do not modify the header row',
-      '6. Save the file as CSV before importing'
+      '2. Leave fields empty if not applicable',
+      '3. For presence fields, Use either "true" or "false", in lowercase or uppercase',
+      '4. For phone numbers, use the format: +[country code] [number]',
+      '5. DO NOT modify the header row',
+      '6. DELETE all instruction lines before importing"',
+      '7. Save the file as CSV before importing'
     ].join('\n');
 
     // Create and trigger download
@@ -752,24 +770,24 @@ const CompaniesList = forwardRef((props, ref) => {
                     </td>
                     <td className="table-cell">
                       <div className="presence-badges">
-                        {[
-                          {condition: company.presence_in_kenya, label: 'Kenya', style: 'badge-green'},
-                          {condition: company.presence_in_uganda, label: 'Uganda', style: 'badge-blue'},
-                          {condition: company.presence_in_tanzania, label: 'Tanzania', style: 'badge-yellow'},
-                          {condition: company.presence_in_rwanda, label: 'Rwanda', style: 'badge-purple'}
-                        ].map((country, index) => (
-                          country.condition && (
-                            <span 
-                              key={index} 
-                              className={`badge ${country.style} ${activeCountries[company.id] === country.label.toLowerCase() ? 'active' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCountryClick(company.id, country);
-                              }}
-                            >
-                              {country.label}
-                            </span>
-                          )
+                        {Object.entries({
+                          kenya: { label: 'Kenya', style: 'badge-green' },
+                          uganda: { label: 'Uganda', style: 'badge-blue' },
+                          tanzania: { label: 'Tanzania', style: 'badge-yellow' },
+                          rwanda: { label: 'Rwanda', style: 'badge-purple' }
+                        })
+                        .filter(([country]) => company[`presence_in_${country}`])
+                        .map(([country, { label, style }]) => (
+                          <span 
+                            key={country}
+                            className={`badge ${style} ${activeCountries[company.id] === country ? 'active' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCountryClick(company.id, { label });
+                            }}
+                          >
+                            {label}
+                          </span>
                         ))}
                       </div>
                     </td>
