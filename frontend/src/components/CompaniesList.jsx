@@ -26,6 +26,8 @@ const CompaniesList = forwardRef((props, ref) => {
   const [importPreview, setImportPreview] = useState(null);
   const [importErrors, setImportErrors] = useState([]);
   const fileInputRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
 
   const handleRefresh = async () => {
     setLoading(true)
@@ -110,7 +112,39 @@ const CompaniesList = forwardRef((props, ref) => {
     )
   }
 
+  const handleSearch = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    
+    if (query.length < 2) {
+      setSearchSuggestions([]);
+      return;
+    }
+
+    const suggestions = companies.filter(company => 
+      company.company_name.toLowerCase().includes(query.toLowerCase()) ||
+      company.business_type.toLowerCase().includes(query.toLowerCase()) ||
+      company.industry.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 5);
+
+    setSearchSuggestions(suggestions);
+  };
+
+  const handleSuggestionClick = (company) => {
+    setSearchQuery(company.company_name);
+    setSearchSuggestions([]);
+  };
+
   const filteredCompanies = companies.filter(company => {
+    if (searchQuery) {
+      const matchesSearch = 
+        company.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        company.business_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        company.industry.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      if (!matchesSearch) return false;
+    }
+
     if (filters.businessType) {
       if (filters.businessType === 'custom') {
         if (!customFilters.businessType || !company.business_type.toLowerCase().includes(customFilters.businessType.toLowerCase())) {
@@ -510,8 +544,33 @@ const CompaniesList = forwardRef((props, ref) => {
       <div className="filters-card">
         <div className="filter-card">
           <div className="filter-content">
-            <h3 className="filter-title">Filter Companies</h3>
+            <h3 className="filter-title">Filters</h3>
             <div className="filter-grid">
+              <div className="filter-group">
+                <label className="filter-label">Search</label>
+                <div className="search-container">
+                  <input
+                    type="text"
+                    className="filter-input"
+                    placeholder="Search companies..."
+                    value={searchQuery}
+                    onChange={handleSearch}
+                  />
+                  {searchSuggestions.length > 0 && (
+                    <div className="search-suggestions">
+                      {searchSuggestions.map((company) => (
+                        <div
+                          key={company.id}
+                          className="suggestion-item"
+                          onClick={() => handleSuggestionClick(company)}
+                        >
+                          {company.company_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="filter-group">
                 <label className="filter-label">Business Type</label>
                 <select
