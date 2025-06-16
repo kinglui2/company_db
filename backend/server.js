@@ -26,20 +26,27 @@ const corsOptions = {
 app.use(cors(corsOptions));  // Use the defined CORS settings
 app.use(express.json());  // Parse JSON request bodies
 
-// Connect to DB
-db.connect(err => {
-  if (err) {
-    console.error('Database connection failed:', err);
-  } else {
+// Test database connection
+db.getConnection()
+  .then(connection => {
     console.log('Connected to MySQL database');
-  }
-});
+    connection.release();
+  })
+  .catch(err => {
+    console.error('Database connection failed:', err);
+  });
 
-// ✅ Routes - Handles requests to '/api/companies' (already defined in your routes)
+// Routes
 const companyRoutes = require('./routes/companyRoutes');
-app.use('/api/companies', companyRoutes);  // Attach company routes to this endpoint
+const userRoutes = require('./routes/userRoutes');
 
-// ✅ Server listen - Ensure that your backend listens on all network interfaces
+// Public routes
+app.use('/api/users', userRoutes);
+
+// Protected routes
+app.use('/api/companies', companyRoutes);
+
+// Server listen
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);

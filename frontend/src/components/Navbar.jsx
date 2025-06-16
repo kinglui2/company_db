@@ -1,16 +1,26 @@
+import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Bars3Icon } from '@heroicons/react/24/outline'
-import '../styles/Navbar.css';
+import { getCurrentUser, hasRole, logout } from '../api/auth'
+import './Navbar.css'
 
-export default function Navbar({ onRefresh, showRefresh }) {
+const Navbar = ({ onRefresh, showRefresh }) => {
   const location = useLocation()
   const isFormPage = location.pathname.includes('/companies/new') || location.pathname.includes('/edit')
+  const user = getCurrentUser()
 
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
     });
+  };
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  const getRoleBadgeClass = (role) => {
+    return role === 'editor' ? 'role-badge editor' : 'role-badge viewer';
   };
 
   return (
@@ -38,15 +48,22 @@ export default function Navbar({ onRefresh, showRefresh }) {
         </div>
         {!isFormPage && (
           <div className="navbar-right">
-            <Link 
-              to="/companies/new" 
-              className="add-company-btn"
-            >
-              Add Company
-            </Link>
+            <div className="user-info">
+              <div className="user-details">
+                <span className="user-name">{user?.username}</span>
+                <span className={getRoleBadgeClass(user?.role)}>
+                  {user?.role}
+                </span>
+              </div>
+              <button onClick={handleLogout} className="logout-button">
+                Logout
+              </button>
+            </div>
           </div>
         )}
       </div>
     </nav>
   )
 }
+
+export default Navbar 

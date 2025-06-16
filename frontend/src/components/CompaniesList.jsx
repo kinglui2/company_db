@@ -1,6 +1,7 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { getCompanies, deleteCompany, bulkImportCompanies } from '../api/companies'
+import { hasRole } from '../api/auth'
 import Toast from './Toast'
 import '../styles/CompaniesList.css'
 
@@ -9,6 +10,7 @@ const CompaniesList = forwardRef((props, ref) => {
   const [companies, setCompanies] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
+  const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState({
     businessType: '',
     industry: '',
@@ -19,15 +21,12 @@ const CompaniesList = forwardRef((props, ref) => {
     industries: [],
     countries: ['kenya', 'uganda', 'tanzania', 'rwanda']
   })
-  const [customFilters, setCustomFilters] = useState({
-    businessType: '',
-    industry: ''
-  })
   const [importPreview, setImportPreview] = useState(null);
   const [importErrors, setImportErrors] = useState([]);
   const fileInputRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const isEditor = hasRole('editor');
 
   const handleRefresh = async () => {
     setLoading(true)
@@ -145,28 +144,16 @@ const CompaniesList = forwardRef((props, ref) => {
       if (!matchesSearch) return false;
     }
 
-    if (filters.businessType) {
-      if (filters.businessType === 'custom') {
-        if (!customFilters.businessType || !company.business_type.toLowerCase().includes(customFilters.businessType.toLowerCase())) {
-          return false
-        }
-      } else if (company.business_type !== filters.businessType) {
-        return false
-      }
+    if (filters.businessType && company.business_type !== filters.businessType) {
+      return false;
     }
-    if (filters.industry) {
-      if (filters.industry === 'custom') {
-        if (!customFilters.industry || !company.industry.toLowerCase().includes(customFilters.industry.toLowerCase())) {
-          return false
-        }
-      } else if (company.industry !== filters.industry) {
-        return false
-      }
+    if (filters.industry && company.industry !== filters.industry) {
+      return false;
     }
     if (filters.country && !company[`presence_in_${filters.country}`]) {
-      return false
+      return false;
     }
-    return true
+    return true;
   })
 
   const handleCountryClick = (companyId, country) => {
@@ -535,115 +522,104 @@ const CompaniesList = forwardRef((props, ref) => {
 
   return (
     <div className="companies-container">
-      {toast && (
-        <div className="toast-container">
-          <Toast message={toast.message} type={toast.type} />
+      <div className="header-container">
+        <div className="header-left">
+          <h1 className="page-title">Companies</h1>
+          <button 
+            className="refresh-button" 
+            onClick={handleRefresh}
+            title="Refresh data"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+            </svg>
+          </button>
+          <button 
+            className="filter-toggle-button"
+            onClick={() => setShowFilters(!showFilters)}
+            title={showFilters ? "Hide filters" : "Show filters"}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d={showFilters ? "M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" : "M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z"} clipRule="evenodd" />
+            </svg>
+            {showFilters ? "Hide Filters" : "Show Filters"}
+          </button>
         </div>
-      )}
+        {isEditor && (
+          <div className="header-right">
+            <Link to="/companies/new" className="add-button">
+              Add Company
+            </Link>
+          </div>
+        )}
+      </div>
 
-      <div className="filters-card">
-        <div className="filter-card">
-          <div className="filter-content">
-            <h3 className="filter-title">Filters</h3>
-            <div className="filter-grid">
-              <div className="filter-group">
-                <label className="filter-label">Search</label>
-                <div className="search-container">
-                  <input
-                    type="text"
-                    className="filter-input"
-                    placeholder="Search companies..."
-                    value={searchQuery}
-                    onChange={handleSearch}
-                  />
-                  {searchSuggestions.length > 0 && (
-                    <div className="search-suggestions">
-                      {searchSuggestions.map((company) => (
-                        <div
-                          key={company.id}
-                          className="suggestion-item"
-                          onClick={() => handleSuggestionClick(company)}
-                        >
-                          {company.company_name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="filter-group">
-                <label className="filter-label">Business Type</label>
-                <select
-                  className="filter-select"
-                  value={filters.businessType}
-                  onChange={(e) => {
-                    setFilters({...filters, businessType: e.target.value})
-                    if (e.target.value !== 'custom') {
-                      setCustomFilters({...customFilters, businessType: ''})
-                    }
-                  }}
-                >
-                  <option value="">All Types</option>
-                  {filterOptions.businessTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                  <option value="custom">Custom Type...</option>
-                </select>
-                {filters.businessType === 'custom' && (
-                  <input
-                    type="text"
-                    className="filter-input"
-                    placeholder="Enter business type..."
-                    value={customFilters.businessType}
-                    onChange={(e) => setCustomFilters({...customFilters, businessType: e.target.value})}
-                  />
+      <div className={`filter-card ${showFilters ? 'show' : 'hide'}`}>
+        <div className="filter-content">
+          <div className="filter-grid">
+            <div className="filter-group">
+              <label className="filter-label">Search</label>
+              <div className="search-container">
+                <input
+                  type="text"
+                  className="filter-input"
+                  placeholder="Search companies..."
+                  value={searchQuery}
+                  onChange={handleSearch}
+                />
+                {searchSuggestions.length > 0 && (
+                  <div className="search-suggestions">
+                    {searchSuggestions.map(company => (
+                      <div
+                        key={company.id}
+                        className="suggestion-item"
+                        onClick={() => handleSuggestionClick(company)}
+                      >
+                        {company.company_name}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-
-              <div className="filter-group">
-                <label className="filter-label">Industry</label>
-                <select
-                  className="filter-select"
-                  value={filters.industry}
-                  onChange={(e) => {
-                    setFilters({...filters, industry: e.target.value})
-                    if (e.target.value !== 'custom') {
-                      setCustomFilters({...customFilters, industry: ''})
-                    }
-                  }}
-                >
-                  <option value="">All Industries</option>
-                  {filterOptions.industries.map(industry => (
-                    <option key={industry} value={industry}>{industry}</option>
-                  ))}
-                  <option value="custom">Custom Industry...</option>
-                </select>
-                {filters.industry === 'custom' && (
-                  <input
-                    type="text"
-                    className="filter-input"
-                    placeholder="Enter industry..."
-                    value={customFilters.industry}
-                    onChange={(e) => setCustomFilters({...customFilters, industry: e.target.value})}
-                  />
-                )}
-              </div>
-
-              <div className="filter-group">
-                <label className="filter-label">Country Presence</label>
-                <select
-                  className="filter-select"
-                  value={filters.country}
-                  onChange={(e) => setFilters({...filters, country: e.target.value})}
-                >
-                  <option value="">All Countries</option>
-                  {filterOptions.countries.map(country => (
-                    <option key={country} value={country}>
-                      {country.charAt(0).toUpperCase() + country.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            </div>
+            <div className="filter-group">
+              <label className="filter-label">Business Type</label>
+              <select
+                className="filter-select"
+                value={filters.businessType}
+                onChange={(e) => setFilters(prev => ({ ...prev, businessType: e.target.value }))}
+              >
+                <option value="">All Types</option>
+                {filterOptions.businessTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            <div className="filter-group">
+              <label className="filter-label">Industry</label>
+              <select
+                className="filter-select"
+                value={filters.industry}
+                onChange={(e) => setFilters(prev => ({ ...prev, industry: e.target.value }))}
+              >
+                <option value="">All Industries</option>
+                {filterOptions.industries.map(industry => (
+                  <option key={industry} value={industry}>{industry}</option>
+                ))}
+              </select>
+            </div>
+            <div className="filter-group">
+              <label className="filter-label">Country</label>
+              <select
+                className="filter-select"
+                value={filters.country}
+                onChange={(e) => setFilters(prev => ({ ...prev, country: e.target.value }))}
+              >
+                <option value="">All Countries</option>
+                {filterOptions.countries.map(country => (
+                  <option key={country} value={country}>{country.charAt(0).toUpperCase() + country.slice(1)}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="filter-actions">
@@ -654,28 +630,32 @@ const CompaniesList = forwardRef((props, ref) => {
             >
               Export CSV
             </button>
-            <button 
-              onClick={handleBulkImport}
-              className="template-button"
-            >
-              Download Template
-            </button>
-            <div className="import-container">
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept=".csv"
-                onChange={handleFileUpload}
-                className="file-input"
-                style={{ display: 'none' }}
-              />
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="import-button"
-              >
-                Bulk Import
-              </button>
-            </div>
+            {isEditor && (
+              <>
+                <button 
+                  onClick={handleBulkImport}
+                  className="template-button"
+                >
+                  Download Template
+                </button>
+                <div className="import-container">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    className="file-input"
+                    style={{ display: 'none' }}
+                  />
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="import-button"
+                  >
+                    Bulk Import
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -761,7 +741,7 @@ const CompaniesList = forwardRef((props, ref) => {
                   <th className="header-cell">Industry</th>
                   <th className="header-cell">Contact</th>
                   <th className="header-cell">Presence</th>
-                  <th className="header-cell">Actions</th>
+                  {isEditor && <th className="header-cell">Actions</th>}
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -850,40 +830,42 @@ const CompaniesList = forwardRef((props, ref) => {
                         ))}
                       </div>
                     </td>
-                    <td className="table-cell">
-                      <div className="action-buttons">
-                        <Link
-                          to={`/companies/${company.id}/edit`}
-                          className="edit-button"
-                        >
-                          Edit
-                        </Link>
-                        <button 
-                          className="delete-button"
-                          onClick={async () => {
-                            if (window.confirm('Are you sure you want to delete this company?')) {
-                              try {
-                                await deleteCompany(company.id)
-                                const updatedCompanies = await getCompanies()
-                                setCompanies(updatedCompanies)
-                                setToast({
-                                  message: 'Company deleted successfully',
-                                  type: 'success'
-                                })
-                              } catch (error) {
-                                console.error('Error deleting company:', error)
-                                setToast({
-                                  message: 'Failed to delete company',
-                                  type: 'error'
-                                })
+                    {isEditor && (
+                      <td className="table-cell">
+                        <div className="action-buttons">
+                          <Link
+                            to={`/companies/${company.id}/edit`}
+                            className="edit-button"
+                          >
+                            Edit
+                          </Link>
+                          <button 
+                            className="delete-button"
+                            onClick={async () => {
+                              if (window.confirm('Are you sure you want to delete this company?')) {
+                                try {
+                                  await deleteCompany(company.id)
+                                  const updatedCompanies = await getCompanies()
+                                  setCompanies(updatedCompanies)
+                                  setToast({
+                                    message: 'Company deleted successfully',
+                                    type: 'success'
+                                  })
+                                } catch (error) {
+                                  console.error('Error deleting company:', error)
+                                  setToast({
+                                    message: 'Failed to delete company',
+                                    type: 'error'
+                                  })
+                                }
                               }
-                            }
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

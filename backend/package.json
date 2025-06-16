@@ -4,20 +4,23 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "npx nodemon server.js"
+    "dev": "npx nodemon server.js",
+    "import": "node scripts/importCompanies.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
+    "csv-parse": "^5.5.3",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
   }
 }
-
